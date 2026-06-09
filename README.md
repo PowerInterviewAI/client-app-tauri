@@ -38,7 +38,7 @@ This repository contains the frontend UI in `src/renderer/` and the Tauri backen
 ### Prerequisites
 
 - Node.js 22.x
-- npm
+- pnpm
 - Rust toolchain (for Tauri builds)
 
 ### Install
@@ -46,19 +46,19 @@ This repository contains the frontend UI in `src/renderer/` and the Tauri backen
 ```bash
 git clone https://github.com/PowerInterviewAI/client-app.git
 cd power-interview-client
-npm install
+pnpm install
 ```
 
 ### Development
 
-- `npm run dev` - start the renderer only
-- `npm run tauri:dev` - launch the Tauri desktop app locally
+- `pnpm dev` - start the renderer only
+- `pnpm tauri:dev` - launch the Tauri desktop app locally
 
 ### Build
 
 ```bash
-npm run build
-npm run tauri:build
+pnpm build
+pnpm tauri:build
 ```
 
 ### Package Output
@@ -72,7 +72,7 @@ power-interview-client/
 ├── src/               # React renderer app
 ├── public/            # Static assets
 ├── src-tauri/         # Rust Tauri backend and native commands
-├── package.json       # npm scripts and dependencies
+├── package.json       # pnpm scripts and dependencies
 ├── README.md          # Developer documentation
 └── .github/           # CI / release workflow
 ```
@@ -96,7 +96,7 @@ This is the most stable cross-platform approach for modern Tauri desktop clients
 ## Build & Release
 
 A GitHub Actions workflow is configured at `.github/workflows/manual-cross-platform-release.yml`.
-It installs dependencies, builds the renderer, and runs `npm run tauri:build` for both Windows and macOS.
+It installs dependencies, builds the renderer, and runs `pnpm tauri:build` for both Windows and macOS.
 
 ## Notes
 

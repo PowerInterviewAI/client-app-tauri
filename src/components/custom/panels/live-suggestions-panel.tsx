@@ -5,8 +5,8 @@ import { useConfigStore } from '@/hooks/use-config-store';
 
 const MAX_QUESTION_LENGTH = 256;
 
-function truncateMiddle(text: string, maxLen: number): string {
-  if (text.length <= maxLen) return text;
+function truncateMiddle(text: string | undefined, maxLen: number): string {
+  if (!text || text.length <= maxLen) return text || '';
   const half = Math.floor((maxLen - 3) / 2);
   return text.slice(0, half) + ' ... ... ... ' + text.slice(text.length - (maxLen - 3 - half));
 }

@@ -18,10 +18,13 @@ jobs:
         include:
           - os: windows-latest
             platform: win
-            build_command: npx electron-builder --win --x64 --publish never
+            args: ''
+            rust-targets: ''
           - os: macos-latest
             platform: mac
-            build_command: npx electron-builder --mac --publish never
+            # Universal binary: runs natively on both Apple Silicon and Intel (macOS 14.4+).
+            args: '--target universal-apple-darwin'
+            rust-targets: 'aarch64-apple-darwin x86_64-apple-darwin'
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -29,42 +32,54 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
-      - name: Build Electron main process
-        run: npm run electron:build-main
+      - name: Add Rust targets
+        if: matrix.rust-targets != ''
+        run: rustup target add ${{ matrix.rust-targets }}
 
-      - name: Build renderer assets
-        run: npm run build
-
-      - name: Build release packages
+      - name: Build Tauri bundle
+        run: pnpm tauri build ${{ matrix.args }}
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
-        run: ${{ matrix.build_command }}
-        shell: bash
+          # Required for the updater to sign the bundles. Without these the
+          # `createUpdaterArtifacts` step cannot produce the `.sig` files and
+          # updates will fail signature verification on the client.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.platform }}
+          # Windows lands in target/release/bundle; the macOS universal build
+          # lands in target/universal-apple-darwin/release/bundle.
           path: |
-            release/*.exe
-            release/*.dmg
-            release/*.zip
-            release/*.yml
-            release/*.yaml
-            release/*.blockmap
+            src-tauri/target/release/bundle/**/*
+            src-tauri/target/universal-apple-darwin/release/bundle/**/*
           if-no-files-found: error
 
   publish:
-    if: ${{ inputs.publish }}
+    if: inputs.publish
     name: Publish GitHub Release
     needs: build
     runs-on: ubuntu-latest
@@ -74,35 +89,52 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: release-artifacts
 
-      - name: Prepare release metadata
+      - name: Read version
         id: meta
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          TAG="v${VERSION}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Create or update release
+      - name: Create or update GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ steps.meta.outputs.tag }}"
-          TITLE="Release ${TAG}"
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists; uploading artifacts."
           else
-            gh release create "$TAG" --title "$TITLE" --notes "Manual cross-platform build artifacts."
+            gh release create "$TAG" \
+              --title "Release $TAG" \
+              --notes "Manual cross-platform Tauri build."
           fi
           while IFS= read -r -d '' file; do
             echo "Uploading $(basename "$file")"
             gh release upload "$TAG" "$file" --clobber
-          done < <(
-            find release-artifacts -type f \
-              \( -name '*.exe' -o -name '*.dmg' -o -name '*.zip' -o -name '*.yml' -o -name '*.yaml' -o -name '*.blockmap' \) \
-              -print0
-          )
+          done < <(find release-artifacts -type f \( \
+            -name '*.exe' -o -name '*.msi' -o \
+            -name '*.dmg' -o -name '*.tar.gz' -o -name '*.zip' -o \
+            -name '*.sig' \
+          \) -print0)
+
+      - name: Generate and upload latest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: node .github/scripts/generate-latest-json.mjs

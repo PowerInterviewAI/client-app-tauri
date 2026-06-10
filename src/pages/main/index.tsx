@@ -1,0 +1,288 @@
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+import BetaTesterNotice from '@/components/custom/beta-tester-notice';
+import ConfigurationDialog from '@/components/custom/configuration-dialog';
+import ControlPanel from '@/components/custom/control-panel';
+import { LoadingPage } from '@/components/custom/loading';
+import ActionSuggestionsPanel from '@/components/custom/panels/action-suggestions-panel';
+import LiveSuggestionsPanel from '@/components/custom/panels/live-suggestions-panel';
+import TranscriptPanel from '@/components/custom/panels/transcript-panel';
+import StatusPanel from '@/components/custom/status-panel';
+import TrialUserNotice from '@/components/custom/trial-user-notice';
+import { VideoPanel, type VideoPanelHandle } from '@/components/custom/video-panel';
+import { useAppState } from '@/hooks/use-app-state';
+import { useAssistantService } from '@/hooks/use-assistant-service';
+import useAuth from '@/hooks/use-auth';
+import { useConfigStore } from '@/hooks/use-config-store';
+import useIsStealthMode from '@/hooks/use-is-stealth-mode';
+import { RunningState, UserRole } from '@/types/app-state';
+import { Loader } from 'lucide-react';
+import { type ActionSuggestion, type LiveSuggestion } from '@/types/suggestion';
+import { type Transcript } from '@/types/transcript';
+
+export default function MainPage() {
+  const { logout } = useAuth();
+
+  const navigate = useNavigate();
+
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [now] = useState(() => Date.now());
+  const { config, isLoading: configLoading, loadConfig } = useConfigStore();
+  const { setVideoPanelRef, stopAssistant } = useAssistantService();
+  const [transcripts, setTranscripts] = useState<Transcript[]>([]);
+  const [liveSuggestions, setLiveSuggestions] = useState<LiveSuggestion[]>([]);
+  const [actionSuggestions, setActionSuggestions] = useState<ActionSuggestion[]>([]);
+  const videoPanelRef = useRef<VideoPanelHandle>(null);
+  const [transcriptHeight, setTranscriptHeight] = useState<number | null>(null);
+  const [suggestionHeight, setSuggestionHeight] = useState<number | null>(null);
+  const [betaTesterNoticeClosed, setBetaTesterNoticeClosed] = useState(false);
+  const [trialNoticeClosed, setTrialNoticeClosed] = useState(false);
+
+  // App state from context
+  const { appState } = useAppState();
+
+  // Register videoPanelRef with assistant state
+  useEffect(() => {
+    setVideoPanelRef(videoPanelRef as React.RefObject<VideoPanelHandle>);
+  }, [setVideoPanelRef]);
+
+  // Listen for hotkey to stop assistant
+  useEffect(() => {
+    if (!window?.electronAPI?.onHotkeyStopAssistant) return;
+
+    const cleanup = window.electronAPI.onHotkeyStopAssistant(() => {
+      stopAssistant().catch((err) => {
+        console.error('Failed to stop assistant from hotkey:', err);
+      });
+    });
+
+    return cleanup;
+  }, [stopAssistant]);
+
+  // Load config on mount
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
+
+  const hasLiveSuggestions = liveSuggestions.length > 0;
+  const hasActionSuggestions = actionSuggestions.length > 0;
+  const hasTranscripts = transcripts.length > 0;
+  const hideVideoPanel = !config?.faceSwap;
+  const hideTranscriptPanel = hasActionSuggestions && !hasTranscripts;
+
+  const hasSuggestions = hasLiveSuggestions || hasActionSuggestions;
+  const suggestionPanelCount = (hasLiveSuggestions ? 1 : 0) + (hasActionSuggestions ? 1 : 0);
+
+  // stable compute function so other effects can trigger a recompute
+  // include `suggestionPanelCount` in deps to avoid stale closure
+  const computeAvailable = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const title = document.getElementById('titlebar')?.getBoundingClientRect().height || 0;
+    let status = document.getElementById('status-panel')?.getBoundingClientRect().height || 0;
+    let control = document.getElementById('control-panel')?.getBoundingClientRect().height || 0;
+    let video = document.getElementById('video-panel')?.getBoundingClientRect().height || 0;
+    const extra = 8; // spacing/padding between elements
+
+    if (status > 0) status += 4; // account for border
+    if (control > 0) control += 4; // account for border
+    if (video > 0) video += 4; // account for border
+
+    setTranscriptHeight(
+      Math.max(100, window.innerHeight - (title + status + control + video + extra))
+    );
+    if (suggestionPanelCount > 0) {
+      setSuggestionHeight(
+        Math.max(
+          100,
+          window.innerHeight - (title + status + control + extra) - (suggestionPanelCount - 1) * 4
+        ) / suggestionPanelCount
+      );
+    } else {
+      setSuggestionHeight(0);
+    }
+  }, [suggestionPanelCount]);
+
+  const isStealth = useIsStealthMode();
+
+  // Compute available space when page is navigated to
+  useEffect(() => {
+    setTimeout(() => {
+      computeAvailable();
+    }, 10);
+  }, [computeAvailable]);
+
+  // compute panel height by subtracting hotkeys/control/video heights from viewport
+  // placed here so hooks order is stable across renders (avoids conditional-hook errors)
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    computeAvailable();
+    window.addEventListener('resize', computeAvailable, { passive: true });
+
+    return () => {
+      window.removeEventListener('resize', computeAvailable);
+    };
+  }, [computeAvailable]);
+
+  // Recompute when panels mount/unmount
+  useEffect(() => {
+    computeAvailable();
+  }, [
+    hasActionSuggestions,
+    hasLiveSuggestions,
+    hasTranscripts,
+    hideVideoPanel,
+    hideTranscriptPanel,
+    computeAvailable,
+  ]);
+
+  // Recompute when stealth mode toggles
+  useEffect(() => {
+    computeAvailable();
+  }, [isStealth, computeAvailable]);
+
+  // Recompute when face swap setting toggles
+  useEffect(() => {
+    computeAvailable();
+  }, [config?.faceSwap, computeAvailable]);
+
+  // Recompute when assistant running state or appState becomes available
+  useEffect(() => {
+    computeAvailable();
+  }, [appState?.runningState, appState, computeAvailable]);
+
+  // Sign out handling
+  const handleSignOut = async () => {
+    await logout();
+  };
+
+  // Memoized styles to prevent unnecessary re-renders
+  const transcriptStyle = useMemo(
+    () => ((transcriptHeight ?? 0) > 0 ? { height: `${transcriptHeight}px` } : undefined),
+    [transcriptHeight]
+  );
+  const suggestionStyle = useMemo(() => ({ height: `${suggestionHeight}px` }), [suggestionHeight]);
+
+  // Sync app state to local state
+  useEffect(() => {
+    if (appState?.transcripts) setTranscripts(appState.transcripts);
+  }, [appState?.transcripts]);
+  useEffect(() => {
+    if (appState?.liveSuggestions) setLiveSuggestions(appState.liveSuggestions);
+  }, [appState?.liveSuggestions]);
+  useEffect(() => {
+    if (appState?.actionSuggestions) setActionSuggestions(appState.actionSuggestions);
+  }, [appState?.actionSuggestions]);
+
+  // Redirect to login if not logged in
+  const _redirectedToLogin = useRef(false);
+
+  useEffect(() => {
+    if (appState?.isLoggedIn === false && !_redirectedToLogin.current) {
+      _redirectedToLogin.current = true;
+      setTimeout(() => {
+        navigate('/auth/login', { replace: true });
+      }, 500);
+    }
+  }, [appState?.isLoggedIn, navigate]);
+
+  // Show loading if not logged in (fallback)
+  if (appState?.isLoggedIn === false) {
+    return <LoadingPage disclaimer="Redirecting to login…" />;
+  }
+
+  // Show loading if auth status is unknown
+  if (appState?.isLoggedIn === null) {
+    return <LoadingPage disclaimer="Authenticating…" />;
+  }
+
+  // Show loading if config or app state is not loaded yet
+  if (configLoading || !appState || (appState && !appState.isBackendLive)) {
+    return <LoadingPage disclaimer="Loading…" />;
+  }
+
+  return (
+    <div className="flex-1 flex flex-col w-full bg-background p-1 space-y-1">
+      <div className="flex-1 flex overflow-y-hidden gap-1">
+        {/* Left Column: Video + Transcription */}
+        <div
+          className={`flex flex-col ${hasSuggestions ? 'w-80' : 'flex-1'} gap-1`}
+          hidden={hideVideoPanel && hideTranscriptPanel}
+        >
+          {/* Video Panel - Small and compact */}
+          <div id="video-panel" className="h-45 w-full max-w-80 mx-auto" hidden={hideVideoPanel}>
+            <VideoPanel
+              ref={videoPanelRef}
+              runningState={appState?.runningState ?? RunningState.Idle}
+              credits={appState?.credits ?? 0}
+            />
+          </div>
+
+          {/* Transcription Panel - Fill remaining space with scroll */}
+          {(!hideTranscriptPanel || !hideVideoPanel) && (
+            <TranscriptPanel transcripts={transcripts} style={transcriptStyle} />
+          )}
+        </div>
+
+        {/* Show beta tester notice */}
+        {appState?.userRole === UserRole.BetaTester &&
+          appState?.credits === 0 &&
+          appState?.betaTesterExpiresAt &&
+          appState?.betaTesterExpiresAt >= now &&
+          !betaTesterNoticeClosed && (
+            <BetaTesterNotice
+              expiresAt={appState?.betaTesterExpiresAt}
+              onClick={() => setBetaTesterNoticeClosed(true)}
+            />
+          )}
+
+        {/* Show trial user notice */}
+        {appState?.userRole === UserRole.TrialUser && !trialNoticeClosed && (
+          <TrialUserNotice onClick={() => setTrialNoticeClosed(true)} />
+        )}
+
+        {/* Right Column: Main Suggestions Panel */}
+        {(hasLiveSuggestions || hasActionSuggestions) && (
+          <div className="flex-1 flex flex-col gap-1 h-full overflow-auto">
+            {hasActionSuggestions && (
+              <ActionSuggestionsPanel
+                actionSuggestions={actionSuggestions}
+                style={suggestionStyle}
+              />
+            )}
+            {hasLiveSuggestions && (
+              <LiveSuggestionsPanel suggestions={liveSuggestions} style={suggestionStyle} />
+            )}
+          </div>
+        )}
+      </div>
+
+      <ControlPanel
+        assistantState={appState?.runningState ?? RunningState.Idle}
+        onProfileClick={() => setIsProfileOpen(true)}
+        onSignOut={handleSignOut}
+      />
+
+      {isStealth && (
+        <StatusPanel
+          runningState={appState?.runningState ?? RunningState.Idle}
+          credits={appState?.credits ?? 0}
+          llmModel={config?.llmConf?.model ?? appState?.providedLLMModel ?? ''}
+        />
+      )}
+
+      <ConfigurationDialog isOpen={isProfileOpen} onOpenChange={setIsProfileOpen} />
+
+      {(appState?.runningState === RunningState.Starting ||
+        appState?.runningState === RunningState.Stopping) && (
+        <div className="fixed inset-0 flex flex-col items-center justify-center gap-2 bg-background/60 z-50 pointer-events-none">
+          <Loader className="w-6 h-6 animate-spin text-foreground" />
+          <span className="text-sm text-foreground">
+            {appState.runningState === RunningState.Starting ? 'Starting…' : 'Stopping…'}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}

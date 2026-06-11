@@ -5,7 +5,9 @@ use crate::consts::{
     API_PAYMENT_PLANS, API_PAYMENT_STATUS,
 };
 use crate::services::api_client::ApiClient;
+use crate::services::app_state::AppStateService;
 use crate::store::ConfigStore;
+use crate::types::app_state::RunningState;
 
 pub struct PaymentService;
 
@@ -36,7 +38,10 @@ impl PaymentService {
         Self::client(config_store).get(API_PAYMENT_HISTORY).await
     }
 
-    pub async fn get_credits(config_store: &ConfigStore) -> Result<Value, String> {
-        Self::client(config_store).post(API_HEALTH_CHECK_PING_CLIENT, &serde_json::json!({})).await
+    pub async fn get_credits(config_store: &ConfigStore, app_state: &AppStateService) -> Result<Value, String> {
+        let is_assistant_running = app_state.get_state().running_state == RunningState::Running;
+        Self::client(config_store)
+            .post(API_HEALTH_CHECK_PING_CLIENT, &serde_json::json!({ "is_assistant_running": is_assistant_running }))
+            .await
     }
 }

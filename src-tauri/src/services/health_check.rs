@@ -7,7 +7,7 @@ use crate::consts::{API_HEALTH_CHECK_PING, API_HEALTH_CHECK_PING_CLIENT};
 use crate::services::api_client::ApiClient;
 use crate::services::app_state::AppStateService;
 use crate::store::ConfigStore;
-use crate::types::app_state::UserRole;
+use crate::types::app_state::{RunningState, UserRole};
 
 const SUCCESS_INTERVAL_MS: u64 = 5_000;
 const FAILURE_INTERVAL_MS: u64 = 1_000;
@@ -52,7 +52,11 @@ impl HealthCheckService {
         let token = config_store.get_config().session_token;
         if !token.is_empty() {
             let client = ApiClient::new().with_token(&token);
-            match client.post(API_HEALTH_CHECK_PING_CLIENT, &serde_json::json!({})).await {
+            let is_assistant_running = app_state.get_state().running_state == RunningState::Running;
+            match client
+                .post(API_HEALTH_CHECK_PING_CLIENT, &serde_json::json!({ "is_assistant_running": is_assistant_running }))
+                .await
+            {
                 Ok(resp) => {
                     if let Ok(data) = serde_json::from_value::<ClientPingResponse>(resp) {
                         app_state.set_logged_in(Some(true));
@@ -99,7 +103,11 @@ impl HealthCheckService {
             // also do client ping if logged in
             let state = app_state.get_state();
             if state.is_logged_in == Some(true) && !token.is_empty() {
-                if let Ok(resp) = client.post(API_HEALTH_CHECK_PING_CLIENT, &serde_json::json!({})).await {
+                let is_assistant_running = state.running_state == RunningState::Running;
+                if let Ok(resp) = client
+                    .post(API_HEALTH_CHECK_PING_CLIENT, &serde_json::json!({ "is_assistant_running": is_assistant_running }))
+                    .await
+                {
                     if let Ok(data) = serde_json::from_value::<ClientPingResponse>(resp) {
                         app_state.set_credits_and_role(
                             data.credits,

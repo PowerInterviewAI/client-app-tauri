@@ -31,5 +31,5 @@ pub async fn payment_get_history(services: State<'_, AppServices>) -> Result<Val
 
 #[tauri::command]
 pub async fn payment_get_credits(services: State<'_, AppServices>) -> Result<Value, String> {
-    PaymentService::get_credits(&services.config_store).await
+    PaymentService::get_credits(&services.config_store, &services.app_state).await
 }

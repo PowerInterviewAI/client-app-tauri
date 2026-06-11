@@ -24,12 +24,36 @@ The app is built as a Tauri desktop client with a React frontend, targeting Wind
 - Tauri `invoke()` is exposed through `tauriApi` and assigned to `window.electronAPI` for compatibility.
 - Transcription, permissions, payment, config, and window control are handled through Tauri commands.
 
+## Audio Capture and Transcription
+
+Audio capture and STT streaming run **in the renderer**, not in Rust:
+
+- Microphone audio is captured with `getUserMedia`; system/interviewer audio
+  (loopback) is captured with `getDisplayMedia({ audio: true })`, after which the
+  video track is stopped and dropped. See `src/services/live-transcription.service.ts`.
+- Each channel resamples to 16 kHz mono PCM16 in an `AudioWorklet` and streams it over
+  a WebSocket to the backend ASR endpoint (`/api/asr/streaming`). Partial/final
+  transcripts come back as JSON.
+- Channels map to speakers as: `ch_1` = microphone = self, `ch_0` = loopback =
+  interviewer. The renderer forwards transcripts to Rust via `transcription_ingest`,
+  where `src-tauri/src/services/transcript.rs` aggregates, de-dupes, and merges them.
+
+The `enable_loopback_audio` / `disable_loopback_audio` commands in
+`src-tauri/src/commands/transcription.rs` do **not** capture audio. `enable_loopback_audio`
+only performs a macOS screen-recording permission pre-check (Windows is a no-op), and
+`disable_loopback_audio` is retained for IPC symmetry.
+
+### Platform note: macOS loopback
+
+`getDisplayMedia` system-audio capture is well supported on Windows (Chromium WebView2)
+but is unreliable in the macOS WKWebView. Loopback (interviewer) audio capture on macOS
+should be verified on real hardware; if unsupported, it requires a native capture path.
+
 ## Key Implementation Notes
 
 - Electron has been removed from the repository.
 - The build flows are now Tauri-first.
-- Native audio loopback is implemented in `src-tauri/src/commands/transcription.rs`.
-- macOS screen recording permission is validated natively.
+- macOS screen recording permission is validated natively before loopback capture.
 - The GitHub Actions workflow builds Tauri bundles for Windows and macOS.
 
 ## Build and Release Workflow

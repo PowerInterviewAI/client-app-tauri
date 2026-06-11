@@ -61,7 +61,6 @@ pub struct Transcript {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct LiveSuggestion {
     pub timestamp: i64,
     pub last_question: String,
@@ -71,7 +70,6 @@ pub struct LiveSuggestion {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ActionSuggestion {
     pub timestamp: i64,
     pub last_question: String,

@@ -14,7 +14,7 @@ import type { PushNotification } from './push-notification';
 export {};
 
 declare global {
-  interface ElectronAPI {
+  interface TauriApi {
     // Hotkey scroll events
     onHotkeyScroll: (
       callback: (section: string, direction: 'up' | 'down' | 'end') => void
@@ -76,7 +76,7 @@ declare global {
       update: (updates: Partial<AppState>) => Promise<AppState>;
     };
 
-    // Pushed app-state updates from main process
+    // Pushed app-state updates from the Tauri backend
     onAppStateUpdated: (callback: (state: AppState) => void) => () => void;
 
     // Transcription management
@@ -168,6 +168,6 @@ declare global {
   }
 
   interface Window {
-    electronAPI?: ElectronAPI;
+    tauriApi?: TauriApi;
   }
 }

@@ -19,7 +19,6 @@ pnpm format
 
 - **Do not use em-dashes** (—) anywhere: in prose, docs, code, or commit messages. Use commas, colons, parentheses, or separate sentences instead.
 - **Package manager is pnpm**: do not use npm or yarn.
-- The build flow is **Tauri-first**; Electron has been removed (no `src/main/` host code).
 - Update native deps in `src-tauri/Cargo.toml`, frontend deps in `package.json`.
 
 ## Documentation Lookups

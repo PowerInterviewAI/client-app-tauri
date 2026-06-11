@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { getElectron } from '@/lib/utils';
+import { getTauriApi } from '@/lib/utils';
 
 export default function useTools() {
   const [exporting, setExporting] = useState(false);
@@ -8,11 +8,11 @@ export default function useTools() {
   const exportTranscript = async () => {
     setExporting(true);
     try {
-      const electron = getElectron();
-      if (!electron) {
-        throw new Error('Electron API not available');
+      const tauri = getTauriApi();
+      if (!tauri) {
+        throw new Error('Tauri API not available');
       }
-      await electron.tools.exportTranscript();
+      await tauri.tools.exportTranscript();
     } catch (error) {
       console.error('Failed to export transcript:', error);
       throw error;
@@ -22,19 +22,19 @@ export default function useTools() {
   };
 
   const clearAll = async () => {
-    const electron = getElectron();
-    if (!electron) {
-      throw new Error('Electron API not available');
+    const tauri = getTauriApi();
+    if (!tauri) {
+      throw new Error('Tauri API not available');
     }
-    await electron.tools.clearAll();
+    await tauri.tools.clearAll();
   };
 
   const setPlaceholderData = async () => {
-    const electron = getElectron();
-    if (!electron) {
-      throw new Error('Electron API not available');
+    const tauri = getTauriApi();
+    if (!tauri) {
+      throw new Error('Tauri API not available');
     }
-    await electron.tools.setPlaceholderData();
+    await tauri.tools.setPlaceholderData();
   };
 
   return {

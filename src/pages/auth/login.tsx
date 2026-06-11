@@ -21,12 +21,12 @@ export default function LoginPage() {
     loadConfig();
   }, [loadConfig]);
 
-  // Load saved credentials from Electron store
+  // Load saved credentials from the Tauri config store
   useEffect(() => {
     const loadSavedCredentials = async () => {
-      if (window.electronAPI?.auth) {
+      if (window.tauriApi?.auth) {
         try {
-          const conf = await window.electronAPI.config.get();
+          const conf = await window.tauriApi.config.get();
           if (conf) {
             setRememberMe(conf.rememberMe ?? false);
             if (conf.rememberMe) {
@@ -57,7 +57,7 @@ export default function LoginPage() {
   };
 
   useEffect(() => {
-    // Pre-fill email from config (fallback if Electron API not available)
+    // Pre-fill email from config (fallback if Tauri API not available)
     if (config?.rememberMe) {
       setRememberMe(config.rememberMe);
       if (config?.email) {

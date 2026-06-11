@@ -94,11 +94,11 @@ function ActionSuggestionsPanel({ actionSuggestions = [], style }: ActionSuggest
     prevLastContentRef.current = currentLastContent;
   }, [actionSuggestions, autoScroll]);
 
-  // Listen for hotkey scroll events from Electron main process
+  // Listen for hotkey scroll events from the Tauri backend
   useEffect(() => {
-    if (typeof window === 'undefined' || !window?.electronAPI?.onHotkeyScroll) return;
+    if (typeof window === 'undefined' || !window?.tauriApi?.onHotkeyScroll) return;
 
-    const unsubscribe = window.electronAPI.onHotkeyScroll(
+    const unsubscribe = window.tauriApi.onHotkeyScroll(
       (section: string, direction: 'up' | 'down' | 'end') => {
         if (section !== '1') return; // only handle for action suggestions section
 

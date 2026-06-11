@@ -5,9 +5,9 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// Helper to get the platform API alias exposed by Tauri
-export const getElectron = () => {
-  return typeof window !== 'undefined' ? window.electronAPI : undefined;
+// Helper to get the Tauri bridge API exposed on window
+export const getTauriApi = () => {
+  return typeof window !== 'undefined' ? window.tauriApi : undefined;
 };
 
 export const getCurrentTimestamp = () => {

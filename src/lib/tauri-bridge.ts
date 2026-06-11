@@ -1,8 +1,8 @@
 /**
  * Tauri Bridge
- * Implements the same interface as window.electronAPI but uses Tauri's
- * invoke() and listen() under the hood. Assigned to window.electronAPI
- * in main.tsx so all existing hooks work without modification.
+ * Implements the TauriApi interface (src/types/tauri-api.d.ts) using Tauri's
+ * invoke() and listen() under the hood. Assigned to window.tauriApi
+ * in main.tsx so all hooks/components can use it via getTauriApi().
  */
 
 import { invoke } from '@tauri-apps/api/core';
@@ -40,8 +40,7 @@ function onEvent<T>(event: string, callback: (payload: T) => void): () => void {
 }
 
 // Helper: wrap a Tauri command in the `{ success, data, error }` shape that
-// Electron's ipcMain.handle wrappers return, since the existing hooks
-// (use-auth, use-payment, llm-group, ...) were written against that contract.
+// the hooks (use-auth, use-payment, llm-group, ...) expect.
 async function invokeResult<T = unknown>(
   cmd: string,
   args?: Record<string, unknown>
@@ -55,9 +54,6 @@ async function invokeResult<T = unknown>(
 }
 
 export const tauriApi = {
-  isElectron: false,
-  isTauri: true,
-
   // ---- Hotkey events ----
   onHotkeyScroll: (callback: (section: string, direction: string) => void) =>
     onEvent<{ section: string; direction: string }>('hotkey-scroll', ({ section, direction }) =>
@@ -204,7 +200,7 @@ export const tauriApi = {
 
   // ---- Permissions ----
   // The Rust commands return objects ({ status } / { granted }); unwrap them here so
-  // callers receive the bare string/boolean the typed API (electron-api.d.ts) promises.
+  // callers receive the bare string/boolean the typed API (tauri-api.d.ts) promises.
   permissions: {
     checkScreenRecording: () =>
       invoke('permissions_check_screen_recording').then(

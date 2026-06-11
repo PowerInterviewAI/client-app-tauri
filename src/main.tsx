@@ -6,12 +6,9 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import { tauriApi } from './lib/tauri-bridge.ts';
 
-// Assign Tauri implementation to window.electronAPI so all existing hooks
-// work without modification.
+// Expose the Tauri bridge as window.tauriApi for all hooks/components to use.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-(window as any).electronAPI = tauriApi;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(window as any).electron = tauriApi;
+(window as any).tauriApi = tauriApi;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

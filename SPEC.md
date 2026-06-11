@@ -22,7 +22,7 @@ backend) that assists a candidate during a live interview. While running it:
 ### Frontend
 
 - `src/` - React 19, Tailwind 4, Zustand stores, hooks, components, pages.
-- `src/lib/tauri-bridge.ts` exposes the IPC compatibility API (`window.electronAPI`) used by
+- `src/lib/tauri-bridge.ts` exposes the IPC bridge API (`window.tauriApi`) used by
   renderer hooks; see [IPC Bridge & State Sync](#ipc-bridge--state-sync).
 - `src/router.tsx` defines hash-based routes: `/` (index/splash), `/auth/login`,
   `/auth/signup`, `/main` (the assistant UI), `/payment`.
@@ -59,8 +59,8 @@ utilities. All long-lived services are constructed once in `lib.rs::run()` and s
 ### IPC Bridge & State Sync
 
 - Tauri `invoke()` is exposed through `tauriApi` (`src/lib/tauri-bridge.ts`) and assigned to
-  `window.electronAPI` in `main.tsx`, so renderer hooks written against the old Electron preload
-  API work unchanged.
+  `window.tauriApi` in `main.tsx`, which renderer hooks access via `getTauriApi()`
+  (`src/lib/utils.ts`).
 - **AppState push model**: `AppStateService` holds one `AppState` struct (transcripts, live and
   action suggestions, running state, login/credits/role, stealth flag, etc.). Every mutation
   emits an `app-state-updated` Tauri event with the full state. The renderer's
@@ -360,8 +360,6 @@ The workflow at `.github/workflows/manual-cross-platform-release.yml`:
 
 ## Notes for Developers
 
-- There is no `src/main/` Electron host code in this repo anymore; the build flow is
-  Tauri-first.
 - The face-swap/video-avatar feature is present in the config/types but force-disabled by
   `ConfigStore::migrate` (`face_swap = false`); `VideoGroup` is commented out in the control
   panel.

@@ -9,7 +9,7 @@ import { useAppState } from '@/hooks/use-app-state';
 import { useConfigStore } from '@/hooks/use-config-store';
 import useIsStealthMode from '@/hooks/use-is-stealth-mode';
 import { useThemeStore } from '@/hooks/use-theme-store';
-import { getElectron } from '@/lib/utils';
+import { getTauriApi } from '@/lib/utils';
 
 const isMac = navigator.platform.toUpperCase().includes('MAC');
 
@@ -26,29 +26,29 @@ export default function Titlebar() {
   const [zoomFactor, setZoomFactor] = useState(1);
   useEffect(() => {
     if (!isMac) return;
-    const electron = getElectron();
-    if (!electron) return;
-    electron.zoom
+    const tauri = getTauriApi();
+    if (!tauri) return;
+    tauri.zoom
       .getFactor()
       .then(setZoomFactor)
       .catch(() => {});
-    return electron.zoom.onChange((percent) => setZoomFactor(percent / 100));
+    return tauri.zoom.onChange((percent) => setZoomFactor(percent / 100));
   }, []);
 
   const macPaddingLeft = isMac ? Math.ceil(TRAFFIC_LIGHT_LOGICAL_CLEAR / zoomFactor) : undefined;
 
   const handleClose = () => {
-    const api = window.electronAPI;
+    const api = window.tauriApi;
     if (api?.close) api.close();
   };
 
   const [isDocsOpen, setIsDocsOpen] = useState(false);
   const handleToggleStealth = () => {
-    const electron = getElectron();
-    if (electron) {
-      electron.toggleStealth();
+    const tauri = getTauriApi();
+    if (tauri) {
+      tauri.toggleStealth();
     } else {
-      console.warn('Electron API not available for toggling stealth mode');
+      console.warn('Tauri API not available for toggling stealth mode');
     }
   };
 

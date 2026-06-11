@@ -14,7 +14,7 @@ export default function MainFrame({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const api = window.electronAPI;
+    const api = window.tauriApi;
     if (!api?.onPushNotification) return;
 
     const remove = api.onPushNotification((notification: PushNotification) => {

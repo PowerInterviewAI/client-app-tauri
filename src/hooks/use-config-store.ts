@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { getElectron } from '@/lib/utils';
+import { getTauriApi } from '@/lib/utils';
 import { type Config } from '@/types/config';
 
 interface ConfigStore {
@@ -22,11 +22,11 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   loadConfig: async () => {
     set({ isLoading: true, error: null });
     try {
-      const electron = getElectron();
-      if (!electron?.config) {
-        throw new Error('Electron API not available');
+      const tauri = getTauriApi();
+      if (!tauri?.config) {
+        throw new Error('Tauri API not available');
       }
-      const config = await electron.config.get();
+      const config = await tauri.config.get();
       set({ config, isLoading: false });
     } catch (error) {
       set({ error: error as Error, isLoading: false });
@@ -43,12 +43,11 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     set({ config: newConfig });
 
     try {
-      const electron = getElectron();
-      if (!electron?.config) {
-        throw new Error('Electron API not available');
+      const tauri = getTauriApi();
+      if (!tauri?.config) {
+        throw new Error('Tauri API not available');
       }
-      // Save to Electron
-      const savedConfig = (await electron.config.update(partial)) as Config;
+      const savedConfig = (await tauri.config.update(partial)) as Config;
       set({ config: savedConfig });
     } catch (error) {
       // Rollback on error

@@ -1,11 +1,11 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 
 /**
  * useAuth
  * React hook that exposes authentication actions and simple
  * state for `loading` and `error` to drive UI feedback.
  *
- * Methods call into the preload `window.electronAPI.auth` bridge
+ * Methods call into the `window.tauriApi.auth` bridge
  * and surface errors by setting `error` and re-throwing so callers
  * can respond as needed.
  */
@@ -21,7 +21,7 @@ export default function useAuth() {
       setLoading(true);
       setError(null);
 
-      const result = await window.electronAPI?.auth.login(email, password);
+      const result = await window.tauriApi?.auth.login(email, password);
 
       if (!result?.success) {
         const errMsg = result?.error || 'Login failed';
@@ -39,7 +39,7 @@ export default function useAuth() {
     setLoading(true);
     setError(null);
     try {
-      const result = await window.electronAPI?.auth.signup(username, email, password);
+      const result = await window.tauriApi?.auth.signup(username, email, password);
       if (!result?.success) {
         const errMsg = result?.error || 'Signup failed';
         setError(errMsg);
@@ -61,7 +61,7 @@ export default function useAuth() {
       setLoading(true);
       setError(null);
 
-      const result = await window.electronAPI?.auth.logout();
+      const result = await window.tauriApi?.auth.logout();
       if (!result?.success) {
         const errMsg = result?.error || 'Logout failed';
         setError(errMsg);
@@ -77,7 +77,7 @@ export default function useAuth() {
     setLoading(true);
     setError(null);
     try {
-      const result = await window.electronAPI?.auth.changePassword(currentPassword, newPassword);
+      const result = await window.tauriApi?.auth.changePassword(currentPassword, newPassword);
       if (!result?.success) {
         const errMsg = result?.error || 'Change password failed';
         setError(errMsg);

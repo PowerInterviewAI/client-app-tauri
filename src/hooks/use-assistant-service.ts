@@ -1,7 +1,7 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 
 import { type VideoPanelHandle } from '@/components/custom/video-panel';
-import { getElectron } from '@/lib/utils';
+import { getTauriApi } from '@/lib/utils';
 import { liveTranscriptionService } from '@/services/live-transcription.service';
 import { RunningState } from '@/types/app-state';
 
@@ -23,9 +23,9 @@ export const useAssistantService = create<AssistantService>((set) => ({
   videoPanelRef: null,
 
   startAssistant: async () => {
-    const electron = getElectron();
-    if (!electron) {
-      throw new Error('Electron API not available');
+    const tauri = getTauriApi();
+    if (!tauri) {
+      throw new Error('Tauri API not available');
     }
 
     try {
@@ -39,17 +39,17 @@ export const useAssistantService = create<AssistantService>((set) => ({
       // no reliable programmatic request API in the webview).
       // Screen recording: check only - the OS dialog fires automatically when
       // getDisplayMedia() is called.
-      const micStatus = await electron.permissions.checkMicrophone();
+      const micStatus = await tauri.permissions.checkMicrophone();
       if (micStatus === 'denied' || micStatus === 'restricted') {
-        await electron.permissions.showDeniedDialog('microphone');
+        await tauri.permissions.showDeniedDialog('microphone');
         return;
       }
 
       // desktopCapturer.getSources() returns [] when screen recording is denied,
       // causing getDisplayMedia() to hang indefinitely - guard against it here.
-      const screenStatus = await electron.permissions.checkScreenRecording();
+      const screenStatus = await tauri.permissions.checkScreenRecording();
       if (screenStatus === 'denied' || screenStatus === 'restricted') {
-        await electron.permissions.showDeniedDialog('screen-recording');
+        await tauri.permissions.showDeniedDialog('screen-recording');
         return;
       }
 
@@ -57,22 +57,22 @@ export const useAssistantService = create<AssistantService>((set) => ({
       // returns [] if the app hasn't been restarted since permission was first granted.
       // Detect this early to avoid a 20-second getDisplayMedia timeout and show a clear message.
       if (screenStatus === 'granted') {
-        const hasSources = await electron.permissions.checkScreenSources();
+        const hasSources = await tauri.permissions.checkScreenSources();
         if (!hasSources) {
-          await electron.permissions.showRestartDialog();
+          await tauri.permissions.showRestartDialog();
           return;
         }
       }
 
-      electron.appState.update({ runningState: RunningState.Starting });
+      tauri.appState.update({ runningState: RunningState.Starting });
 
       // Clear previous history
-      await electron.tools.clearAll();
+      await tauri.tools.clearAll();
 
       const config = useConfigStore.getState().config;
 
       // Start transcription services
-      await electron.transcription.start();
+      await tauri.transcription.start();
       await liveTranscriptionService.start(
         config?.audioInputDeviceName ?? '',
         config?.sessionToken ?? ''
@@ -82,15 +82,15 @@ export const useAssistantService = create<AssistantService>((set) => ({
       await new Promise((resolve) => setTimeout(resolve, 3000));
 
       // Update running state to Running after successful start
-      electron.appState.update({ runningState: RunningState.Running });
+      tauri.appState.update({ runningState: RunningState.Running });
     } catch (error) {
       // Reset state to Idle so the button doesn't stay stuck on "Starting..."
-      electron.appState.update({ runningState: RunningState.Idle });
+      tauri.appState.update({ runningState: RunningState.Idle });
 
       // A microphone denial at the native getUserMedia prompt surfaces here as
       // NotAllowedError - show the actionable dialog instead of a generic message.
       if (error instanceof DOMException && error.name === 'NotAllowedError') {
-        await electron.permissions.showDeniedDialog('microphone');
+        await tauri.permissions.showDeniedDialog('microphone');
         set({ error: 'Microphone permission denied' });
         return;
       }
@@ -106,27 +106,27 @@ export const useAssistantService = create<AssistantService>((set) => ({
     try {
       set({ error: null });
 
-      const electron = getElectron();
-      if (!electron) {
-        throw new Error('Electron API not available');
+      const tauri = getTauriApi();
+      if (!tauri) {
+        throw new Error('Tauri API not available');
       }
-      electron.appState.update({ runningState: RunningState.Stopping });
+      tauri.appState.update({ runningState: RunningState.Stopping });
 
       // Stop assistant services
       await Promise.all([
         liveTranscriptionService.stop(),
-        electron.transcription.stop(),
-        electron.liveSuggestion.stop(),
-        electron.actionSuggestion.stop(),
+        tauri.transcription.stop(),
+        tauri.liveSuggestion.stop(),
+        tauri.actionSuggestion.stop(),
       ]);
 
-      electron.setStealth(false); // Ensure stealth mode is turned off when stopping assistant
+      tauri.setStealth(false); // Ensure stealth mode is turned off when stopping assistant
 
       // Sleep 3 seconds to ensure the assistant has fully stopped before allowing start actions
       await new Promise((resolve) => setTimeout(resolve, 3000));
 
       // Update running state to Idle after successful stop
-      electron.appState.update({ runningState: RunningState.Idle });
+      tauri.appState.update({ runningState: RunningState.Idle });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to stop assistant';
       set({

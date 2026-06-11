@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Payment hook
  * Provides payment functionality to React components
  */
@@ -25,7 +25,7 @@ export function usePayment() {
     try {
       setLoading(true);
       setError(null);
-      const result = await window.electronAPI?.payment.getPlans();
+      const result = await window.tauriApi?.payment.getPlans();
       if (result?.success && result.data) {
         setPlans(result.data);
       } else {
@@ -43,7 +43,7 @@ export function usePayment() {
     try {
       setLoading(true);
       setError(null);
-      const result = await window.electronAPI?.payment.getCurrencies();
+      const result = await window.tauriApi?.payment.getCurrencies();
       if (result?.success && result.data) {
         setCurrencies(result.data);
       } else {
@@ -62,7 +62,7 @@ export function usePayment() {
       try {
         setLoading(true);
         setError(null);
-        const result = await window.electronAPI?.payment.create(data);
+        const result = await window.tauriApi?.payment.create(data);
         if (result?.success && result.data) {
           return result.data;
         } else {
@@ -84,7 +84,7 @@ export function usePayment() {
       try {
         setLoading(true);
         setError(null);
-        const result = await window.electronAPI?.payment.getStatus(paymentId);
+        const result = await window.tauriApi?.payment.getStatus(paymentId);
         if (result?.success && result.data) {
           return result.data;
         } else {
@@ -105,7 +105,7 @@ export function usePayment() {
     try {
       setLoading(true);
       setError(null);
-      const result = await window.electronAPI?.payment.getHistory();
+      const result = await window.tauriApi?.payment.getHistory();
       if (result?.success && result.data) {
         return result.data;
       } else {
@@ -124,7 +124,7 @@ export function usePayment() {
     try {
       setLoading(true);
       setError(null);
-      const result = await window.electronAPI?.payment.getCredits();
+      const result = await window.tauriApi?.payment.getCredits();
       if (result?.success && result.credits !== undefined) {
         return result.credits;
       } else {

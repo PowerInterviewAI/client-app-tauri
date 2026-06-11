@@ -10,8 +10,8 @@ export default function ExternalLink({ href, children, className, ...rest }: Ext
     try {
       e.preventDefault();
       const url = href;
-      if (window?.electronAPI?.openExternal) {
-        window.electronAPI.openExternal(url).catch(() => window.open(url, '_blank', 'noopener'));
+      if (window?.tauriApi?.openExternal) {
+        window.tauriApi.openExternal(url).catch(() => window.open(url, '_blank', 'noopener'));
       } else {
         window.open(url, '_blank', 'noopener');
       }

@@ -1,4 +1,4 @@
-import { getElectron } from '@/lib/utils';
+import { getTauriApi } from '@/lib/utils';
 
 const SAMPLE_RATE = 16000;
 const BYTES_PER_SAMPLE = 2; // 16-bit PCM
@@ -276,9 +276,9 @@ class LiveTranscriptionService {
   private channels: AudioWsStream[] = [];
 
   async start(audioInputDeviceName: string, sessionToken: string): Promise<void> {
-    const electron = getElectron();
-    if (!electron) throw new Error('Electron API not available');
-    await electron.transcription.setSessionToken(sessionToken);
+    const tauri = getTauriApi();
+    if (!tauri) throw new Error('Tauri API not available');
+    await tauri.transcription.setSessionToken(sessionToken);
 
     // The renderer only handles the microphone (ch_1, self). System/interviewer audio
     // (ch_0) is captured and streamed natively by the Rust backend. If anything fails
@@ -293,10 +293,10 @@ class LiveTranscriptionService {
       // Start native loopback capture + streaming. A failure here is typically the macOS
       // screen-recording permission being denied.
       try {
-        await electron.transcription.enableLoopbackAudio();
+        await tauri.transcription.enableLoopbackAudio();
       } catch (err) {
         if (isMacOS) {
-          await electron.permissions.showDeniedDialog('screen-recording');
+          await tauri.permissions.showDeniedDialog('screen-recording');
           throw Object.assign(new Error(), { name: 'PermissionError' });
         }
         throw err;
@@ -307,7 +307,7 @@ class LiveTranscriptionService {
         type: 'partial' | 'final';
         text: string;
       }) => {
-        await electron.transcription.ingest(payload);
+        await tauri.transcription.ingest(payload);
       };
 
       const micChannel = new AudioWsStream('ch_1', this.micStream, onTranscript);
@@ -320,8 +320,8 @@ class LiveTranscriptionService {
   }
 
   async stop(): Promise<void> {
-    const electron = getElectron();
-    await electron?.transcription.disableLoopbackAudio();
+    const tauri = getTauriApi();
+    await tauri?.transcription.disableLoopbackAudio();
 
     await Promise.all(this.channels.map((channel) => channel.stop()));
     this.channels = [];

@@ -1,7 +1,7 @@
 import { UserCircle2 } from 'lucide-react';
 import { forwardRef, useRef, useState } from 'react';
 
-import { getElectron } from '@/lib/utils';
+import { getTauriApi } from '@/lib/utils';
 import { RunningState } from '@/types/app-state';
 
 interface VideoPanelProps {
@@ -18,9 +18,9 @@ export const VideoPanel = forwardRef<VideoPanelHandle, VideoPanelProps>(() => {
   const [videoMessage] = useState('Video Stream');
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const electron = getElectron();
-  if (!electron) {
-    throw new Error('Electron API not available');
+  const tauri = getTauriApi();
+  if (!tauri) {
+    throw new Error('Tauri API not available');
   }
 
   const [isStreaming] = useState(false);

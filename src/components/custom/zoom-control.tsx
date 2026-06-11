@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
  * Render the set of zoom buttons that live in the titlebar.
  *
  * This component handles its own state (current zoom percent) and
- * communicates with the preload/electron API directly.  The
+ * communicates with the Tauri bridge API directly.  The
  * parent (Titlebar) simply places the controls in the layout and
  * is free to show/hide an enclosing divider if necessary.
  */
@@ -15,7 +15,7 @@ export default function ZoomControl() {
   const [zoomPercent, setZoomPercent] = useState(100);
 
   useEffect(() => {
-    const api = window.electronAPI;
+    const api = window.tauriApi;
     if (!api?.zoom) return;
 
     api.zoom
@@ -28,15 +28,15 @@ export default function ZoomControl() {
   }, []);
 
   const handleZoomIn = () => {
-    window.electronAPI?.zoom.increase();
+    window.tauriApi?.zoom.increase();
   };
 
   const handleZoomOut = () => {
-    window.electronAPI?.zoom.decrease();
+    window.tauriApi?.zoom.decrease();
   };
 
   const handleZoomReset = () => {
-    window.electronAPI?.zoom.reset();
+    window.tauriApi?.zoom.reset();
   };
 
   return (

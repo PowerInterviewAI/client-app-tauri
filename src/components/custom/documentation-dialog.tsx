@@ -24,7 +24,7 @@ export default function DocumentationDialog({ open, onOpenChange }: Documentatio
 
   useEffect(() => {
     try {
-      window.electronAPI?.autoUpdater
+      window.tauriApi?.autoUpdater
         .getVersion()
         .then((res: unknown) => {
           if (typeof res === 'string') setVersion(res);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+﻿import { useCallback, useEffect, useState } from 'react';
 
 export enum UpdateStatus {
   Downloaded = 'downloaded',
@@ -16,9 +16,9 @@ export function useAutoUpdater() {
   const [currentVersion, setCurrentVersion] = useState<string>('');
 
   useEffect(() => {
-    if (!window.electronAPI?.autoUpdater) return;
+    if (!window.tauriApi?.autoUpdater) return;
 
-    window.electronAPI.autoUpdater
+    window.tauriApi.autoUpdater
       .getVersion()
       .then((version: unknown) => {
         if (typeof version === 'string') setCurrentVersion(version);
@@ -27,7 +27,7 @@ export function useAutoUpdater() {
         console.error('[Updater] failed to get version:', error);
       });
 
-    const cleanup = window.electronAPI.autoUpdater.onStatusUpdate((data) => {
+    const cleanup = window.tauriApi.autoUpdater.onStatusUpdate((data) => {
       setUpdateStatus(data as UpdateStatusData);
     });
 
@@ -36,7 +36,7 @@ export function useAutoUpdater() {
 
   const checkForUpdates = useCallback(async (): Promise<void> => {
     try {
-      await window.electronAPI?.autoUpdater.checkForUpdates();
+      await window.tauriApi?.autoUpdater.checkForUpdates();
     } catch (error) {
       console.error('[Updater] check failed:', error);
     }
@@ -44,7 +44,7 @@ export function useAutoUpdater() {
 
   const quitAndInstall = useCallback(async (): Promise<void> => {
     try {
-      await window.electronAPI?.autoUpdater.quitAndInstall();
+      await window.tauriApi?.autoUpdater.quitAndInstall();
     } catch (error) {
       console.error('[Updater] install failed:', error);
     }

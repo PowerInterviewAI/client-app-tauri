@@ -15,7 +15,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAppState } from '@/hooks/use-app-state';
 import { useConfigStore } from '@/hooks/use-config-store';
-import { getElectron } from '@/lib/utils';
+import { getTauriApi } from '@/lib/utils';
 import { RunningState } from '@/types/app-state';
 import type { LLMConfigValidationResult, LLMModelInfo } from '@/types/llm';
 import { LLMProvider } from '@/types/llm';
@@ -61,11 +61,11 @@ export function LLMGroup({ getDisabled }: LLMGroupProps) {
 
   useEffect(() => {
     if (!open) return;
-    const electron = getElectron();
-    if (!electron?.llm) return;
+    const tauri = getTauriApi();
+    if (!tauri?.llm) return;
 
     setIsLoadingModels(true);
-    electron.llm
+    tauri.llm
       .listModels()
       .then((response) => {
         if (!response.success) {
@@ -118,13 +118,13 @@ export function LLMGroup({ getDisabled }: LLMGroupProps) {
       return;
     }
 
-    const electron = getElectron();
-    if (!electron?.llm) return;
+    const tauri = getTauriApi();
+    if (!tauri?.llm) return;
 
     const timer = setTimeout(async () => {
       setIsValidating(true);
       try {
-        const result = await electron.llm.validate({
+        const result = await tauri.llm.validate({
           provider,
           apikey: trimmed,
           model,

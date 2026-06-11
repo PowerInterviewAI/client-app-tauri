@@ -1,7 +1,7 @@
 /**
  * App State Context
  * Lightweight state management using React Context
- * All state is stored in Electron and accessed via IPC
+ * All state is stored in the Tauri backend and accessed via window.tauriApi
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -54,9 +54,9 @@ class AppStateManager {
     this.initialized = true;
     await this.refreshState();
 
-    if (window.electronAPI?.onAppStateUpdated) {
+    if (window.tauriApi?.onAppStateUpdated) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      this.unsubscribeIPC = window.electronAPI.onAppStateUpdated((raw: any) => {
+      this.unsubscribeIPC = window.tauriApi.onAppStateUpdated((raw: any) => {
         this.state = this.normalize(raw);
         this.emit();
       });
@@ -67,8 +67,8 @@ class AppStateManager {
 
   async refreshState() {
     try {
-      if (!window.electronAPI?.appState) return;
-      const raw = await window.electronAPI.appState.get();
+      if (!window.tauriApi?.appState) return;
+      const raw = await window.tauriApi.appState.get();
       this.state = this.normalize(raw);
       this.emit();
     } catch (err) {
@@ -78,8 +78,8 @@ class AppStateManager {
 
   async updateAppState(updates: Partial<AppState>) {
     try {
-      if (!window.electronAPI?.appState) return;
-      const raw = await window.electronAPI.appState.update(updates);
+      if (!window.tauriApi?.appState) return;
+      const raw = await window.tauriApi.appState.update(updates);
       this.state = this.normalize(raw);
       this.emit();
     } catch (err) {

@@ -2,13 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
   <dict>
-    <!-- Required by Electron for JIT compilation (V8 engine) -->
+    <!-- Required by the WKWebView for JIT compilation (JavaScriptCore) -->
     <key>com.apple.security.cs.allow-jit</key>
     <true/>
-    <!-- Required by Electron for unsigned executable memory -->
+    <!-- Required by the WKWebView for unsigned executable memory -->
     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
     <true/>
-    <!-- Required by Electron to load plugins/native modules -->
+    <!-- Required by Tauri to load plugins/native modules -->
     <key>com.apple.security.cs.disable-library-validation</key>
     <true/>
     <!-- Required to disable DYLD environment variable restrictions -->

@@ -49,9 +49,9 @@ export default function MainPage() {
 
   // Listen for hotkey to stop assistant
   useEffect(() => {
-    if (!window?.electronAPI?.onHotkeyStopAssistant) return;
+    if (!window?.tauriApi?.onHotkeyStopAssistant) return;
 
-    const cleanup = window.electronAPI.onHotkeyStopAssistant(() => {
+    const cleanup = window.tauriApi.onHotkeyStopAssistant(() => {
       stopAssistant().catch((err) => {
         console.error('Failed to stop assistant from hotkey:', err);
       });

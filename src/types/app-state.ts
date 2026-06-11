@@ -25,5 +25,5 @@ export interface AppState {
   credits?: number;
   userRole?: UserRole;
   betaTesterExpiresAt?: number;
-  providedLLMModel?: string;
+  providedLlmModel?: string;
 }

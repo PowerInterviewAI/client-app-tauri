@@ -268,7 +268,7 @@ export default function MainPage() {
         <StatusPanel
           runningState={appState?.runningState ?? RunningState.Idle}
           credits={appState?.credits ?? 0}
-          llmModel={config?.llmConf?.model ?? appState?.providedLLMModel ?? ''}
+          llmModel={config?.llmConf?.model ?? appState?.providedLlmModel ?? ''}
         />
       )}
 

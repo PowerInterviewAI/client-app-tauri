@@ -41,7 +41,7 @@ class AppStateManager {
       credits: raw.credits,
       userRole: raw.userRole,
       betaTesterExpiresAt: raw.betaTesterExpiresAt,
-      providedLLMModel: raw.providedLLMModel,
+      providedLlmModel: raw.providedLlmModel,
     };
   }
 

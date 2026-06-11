@@ -83,7 +83,7 @@ export default function Titlebar() {
         {appState?.isLoggedIn && appState?.credits !== undefined && (
           <CreditsDisplay
             credits={appState.credits ?? 0}
-            llmModel={config?.llmConf?.model ?? appState.providedLLMModel ?? ''}
+            llmModel={config?.llmConf?.model ?? appState.providedLlmModel ?? ''}
             // eslint-disable-next-line
             style={{ WebkitAppRegion: 'drag' } as any}
           />

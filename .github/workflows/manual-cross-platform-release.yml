@@ -16,11 +16,6 @@ on:
         required: true
         default: true
         type: boolean
-      release_notes:
-        description: "What's changed, markdown (optional, default if empty; use \\n for line breaks)"
-        required: false
-        type: string
-        default: ''
 
 jobs:
   version:
@@ -166,7 +161,6 @@ jobs:
         env:
           TAG: ${{ steps.meta.outputs.tag }}
           VERSION: ${{ steps.meta.outputs.version }}
-          CHANGES: ${{ inputs.release_notes }}
         run: node .github/scripts/render-release-notes.mjs
 
       - name: Create or update GitHub release

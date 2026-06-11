@@ -18,6 +18,21 @@ function onEvent<T>(event: string, callback: (payload: T) => void): () => void {
   };
 }
 
+// Helper: wrap a Tauri command in the `{ success, data, error }` shape that
+// Electron's ipcMain.handle wrappers return, since the existing hooks
+// (use-auth, use-payment, llm-group, ...) were written against that contract.
+async function invokeResult<T = unknown>(
+  cmd: string,
+  args?: Record<string, unknown>
+): Promise<{ success: boolean; data?: T; error?: string }> {
+  try {
+    const data = await invoke<T>(cmd, args);
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+}
+
 export const tauriApi = {
   isElectron: false,
   isTauri: true,
@@ -40,27 +55,40 @@ export const tauriApi = {
   // ---- Auth ----
   auth: {
     signup: (username: string, email: string, password: string) =>
-      invoke('auth_signup', { username, email, password }),
-    login: (email: string, password: string) => invoke('auth_login', { email, password }),
-    logout: () => invoke('auth_logout'),
+      invokeResult('auth_signup', { username, email, password }),
+    login: (email: string, password: string) => invokeResult('auth_login', { email, password }),
+    logout: () => invokeResult('auth_logout'),
     changePassword: (currentPassword: string, newPassword: string) =>
-      invoke('auth_change_password', { currentPassword, newPassword }),
+      invokeResult('auth_change_password', { currentPassword, newPassword }),
   },
 
   // ---- Payment ----
   payment: {
-    getPlans: () => invoke('payment_get_plans'),
-    getCurrencies: () => invoke('payment_get_currencies'),
-    create: (data: unknown) => invoke('payment_create', { data }),
-    getStatus: (paymentId: string) => invoke('payment_get_status', { paymentId }),
-    getHistory: () => invoke('payment_get_history'),
-    getCredits: () => invoke('payment_get_credits'),
+    getPlans: async () => {
+      const result = await invokeResult<Array<Record<string, unknown>>>('payment_get_plans');
+      if (!result.success) return { success: false, error: result.error };
+      // Backend returns price_usd (snake_case); the renderer expects priceUsd.
+      const data = (result.data ?? []).map(({ price_usd, ...rest }) => ({
+        ...rest,
+        priceUsd: price_usd,
+      }));
+      return { success: true, data };
+    },
+    getCurrencies: () => invokeResult('payment_get_currencies'),
+    create: (data: unknown) => invokeResult('payment_create', { data }),
+    getStatus: (paymentId: string) => invokeResult('payment_get_status', { paymentId }),
+    getHistory: () => invokeResult('payment_get_history'),
+    getCredits: async () => {
+      const result = await invokeResult<{ credits?: number }>('payment_get_credits');
+      if (!result.success) return { success: false, error: result.error };
+      return { success: true, credits: result.data?.credits ?? 0 };
+    },
   },
 
   // ---- LLM ----
   llm: {
-    listModels: () => invoke('llm_list_models'),
-    validate: (config: unknown) => invoke('llm_validate', { config }),
+    listModels: () => invokeResult('llm_list_models'),
+    validate: (config: unknown) => invokeResult('llm_validate', { config }),
   },
 
   // ---- App State ----

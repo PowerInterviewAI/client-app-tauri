@@ -16,5 +16,5 @@ pub async fn llm_list_models(services: State<'_, AppServices>) -> Result<Value, 
 pub async fn llm_validate(config: Value, services: State<'_, AppServices>) -> Result<Value, String> {
     let token = services.config_store.get_config().session_token;
     let client = if token.is_empty() { ApiClient::new() } else { ApiClient::new().with_token(token) };
-    client.post(API_LLM_VALIDATE, &config).await
+    client.post(API_LLM_VALIDATE, &serde_json::json!({ "config": config })).await
 }

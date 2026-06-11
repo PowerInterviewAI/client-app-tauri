@@ -119,51 +119,60 @@ impl LiveSuggestionService {
                     emit(&map);
                 }
                 Ok(resp) => {
+                    let mut current = LiveSuggestion {
+                        timestamp,
+                        last_question: last_question.clone(),
+                        answer: String::new(),
+                        state: SuggestionState::Loading,
+                        error: String::new(),
+                    };
+
+                    // While the (possibly partial) answer is still a prefix of the
+                    // "no suggestion" sentinel, hide it from the UI; once it diverges
+                    // (a real suggestion) re-show it, even if it was hidden moments ago.
+                    let update = |map: &mut BTreeMap<i64, LiveSuggestion>, current: &LiveSuggestion| {
+                        if !current.answer.is_empty()
+                            && LIVE_SUGGESTION_NO_SUGGESTION.starts_with(&current.answer)
+                        {
+                            map.remove(&timestamp);
+                        } else {
+                            map.insert(timestamp, current.clone());
+                        }
+                    };
+
                     {
                         let mut map = suggestions.lock();
-                        if let Some(s) = map.get_mut(&timestamp) {
-                            s.state = SuggestionState::Loading;
-                        }
+                        update(&mut map, &current);
                         emit(&map);
                     }
 
                     let mut stream = resp.bytes_stream();
-                    let mut answer = String::new();
                     let mut pending = Vec::<u8>::new();
 
                     while let Some(chunk) = stream.next().await {
                         if abort.load(Ordering::Acquire) {
+                            current.state = SuggestionState::Stopped;
                             let mut map = suggestions.lock();
-                            if let Some(s) = map.get_mut(&timestamp) {
-                                s.state = SuggestionState::Stopped;
-                            }
+                            update(&mut map, &current);
                             emit(&map);
                             return;
                         }
                         if let Ok(bytes) = chunk {
                             pending.extend_from_slice(&bytes);
-                            crate::utils::drain_utf8(&mut pending, &mut answer);
+                            crate::utils::drain_utf8(&mut pending, &mut current.answer);
 
                             let mut map = suggestions.lock();
-                            if answer.starts_with(LIVE_SUGGESTION_NO_SUGGESTION) {
-                                map.remove(&timestamp);
-                            } else if let Some(s) = map.get_mut(&timestamp) {
-                                s.answer = answer.clone();
-                                s.state = SuggestionState::Loading;
-                            }
+                            update(&mut map, &current);
                             emit(&map);
                         }
                     }
 
                     // finalize
-                    let mut map = suggestions.lock();
-                    if answer.starts_with(LIVE_SUGGESTION_NO_SUGGESTION) {
-                        map.remove(&timestamp);
-                    } else if let Some(s) = map.get_mut(&timestamp) {
-                        if s.state == SuggestionState::Loading {
-                            s.state = SuggestionState::Success;
-                        }
+                    if current.state == SuggestionState::Loading {
+                        current.state = SuggestionState::Success;
                     }
+                    let mut map = suggestions.lock();
+                    update(&mut map, &current);
                     emit(&map);
                 }
             }

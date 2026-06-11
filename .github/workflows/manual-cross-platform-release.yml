@@ -16,6 +16,11 @@ on:
         required: true
         default: true
         type: boolean
+      release_notes:
+        description: "What's changed (optional, leave empty for default notes)"
+        required: false
+        type: string
+        default: ''
 
 jobs:
   version:
@@ -157,17 +162,25 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
 
+      - name: Render release notes
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          CHANGES: ${{ inputs.release_notes }}
+        run: node .github/scripts/render-release-notes.mjs
+
       - name: Create or update GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ steps.meta.outputs.tag }}"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG already exists; uploading artifacts."
+            echo "Release $TAG already exists; updating notes and uploading artifacts."
+            gh release edit "$TAG" --title "Release $TAG" --notes-file release-notes.md
           else
             gh release create "$TAG" \
               --title "Release $TAG" \
-              --notes "Manual cross-platform Tauri build."
+              --notes-file release-notes.md
           fi
           while IFS= read -r -d '' file; do
             echo "Uploading $(basename "$file")"

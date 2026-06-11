@@ -16,6 +16,7 @@ use std::sync::Arc;
 use futures_util::{SinkExt, StreamExt};
 use parking_lot::Mutex;
 use tokio::sync::mpsc;
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::Message;
 
 use crate::consts::{API_ASR_STREAMING, BACKEND_BASE_URL};
@@ -87,8 +88,8 @@ impl LoopbackService {
     }
 }
 
-/// Build the `wss?://.../api/asr/streaming?token=...` URL from the configured backend base.
-fn streaming_url(token: &str) -> String {
+/// Build the `wss?://.../api/asr/streaming` URL from the configured backend base.
+fn streaming_url() -> String {
     let ws_base = if let Some(rest) = BACKEND_BASE_URL.strip_prefix("https") {
         format!("wss{rest}")
     } else if let Some(rest) = BACKEND_BASE_URL.strip_prefix("http") {
@@ -96,13 +97,7 @@ fn streaming_url(token: &str) -> String {
     } else {
         BACKEND_BASE_URL.to_string()
     };
-    let mut url = format!("{}{}", ws_base.trim_end_matches('/'), API_ASR_STREAMING);
-    // Session tokens are JWT-style (URL-safe characters only), so no escaping is needed.
-    if !token.is_empty() {
-        url.push_str("?token=");
-        url.push_str(token);
-    }
-    url
+    format!("{}{}", ws_base.trim_end_matches('/'), API_ASR_STREAMING)
 }
 
 /// Reconnecting stream loop: pulls mono chunks, resamples to 16 kHz PCM16, and sends them;
@@ -145,8 +140,18 @@ async fn connect_and_stream(
     transcript: &Arc<TranscriptService>,
     stop: &Arc<AtomicBool>,
 ) -> Result<CaptureEnded, String> {
-    let url = streaming_url(token);
-    let (ws, _response) = tokio_tungstenite::connect_async(url.as_str())
+    let mut request = streaming_url()
+        .into_client_request()
+        .map_err(|e| e.to_string())?;
+    if !token.is_empty() {
+        // The backend's WS auth only checks the `session_token` cookie, not query params.
+        let cookie = format!("session_token={token}");
+        request.headers_mut().insert(
+            "Cookie",
+            cookie.parse().map_err(|e: tokio_tungstenite::tungstenite::http::header::InvalidHeaderValue| e.to_string())?,
+        );
+    }
+    let (ws, _response) = tokio_tungstenite::connect_async(request)
         .await
         .map_err(|e| e.to_string())?;
     let (mut write, mut read) = ws.split();

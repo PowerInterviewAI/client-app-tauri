@@ -22,9 +22,10 @@ struct ClientPingResponse {
 
 fn parse_user_role(s: &str) -> Option<UserRole> {
     match s {
+        "user" => Some(UserRole::User),
+        "trial_user" => Some(UserRole::TrialUser),
         "beta_tester" => Some(UserRole::BetaTester),
-        "trial" => Some(UserRole::Trial),
-        "standard" => Some(UserRole::Standard),
+        "admin" => Some(UserRole::Admin),
         _ => None,
     }
 }

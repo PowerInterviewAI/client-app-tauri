@@ -58,7 +58,6 @@ class AudioWsStream {
   constructor(
     private readonly channel: Channel,
     private readonly stream: MediaStream,
-    private readonly sessionToken: string,
     private readonly onTranscript: (payload: {
       channel: Channel;
       type: 'partial' | 'final';
@@ -170,17 +169,12 @@ class AudioWsStream {
       : new Error(`Failed to open websocket for ${this.channel}`);
   }
 
-  private streamingUrl(): string {
-    // Browser WebSocket can't set Authorization headers, so the session token is
-    // passed as a query parameter (the conventional approach for authenticated WS).
-    if (!this.sessionToken) return STREAMING_URL;
-    const sep = STREAMING_URL.includes('?') ? '&' : '?';
-    return `${STREAMING_URL}${sep}token=${encodeURIComponent(this.sessionToken)}`;
-  }
-
   private connectWebSocket(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      const ws = new WebSocket(this.streamingUrl());
+      // Browser WebSocket can't set custom headers, so auth relies on the
+      // `session_token` cookie set in the webview's cookie jar (see
+      // transcription_set_session_token in the Rust backend).
+      const ws = new WebSocket(STREAMING_URL);
       this.ws = ws;
       let settled = false;
 
@@ -316,7 +310,7 @@ class LiveTranscriptionService {
         await electron.transcription.ingest(payload);
       };
 
-      const micChannel = new AudioWsStream('ch_1', this.micStream, sessionToken, onTranscript);
+      const micChannel = new AudioWsStream('ch_1', this.micStream, onTranscript);
       this.channels = [micChannel];
       await micChannel.start();
     } catch (err) {

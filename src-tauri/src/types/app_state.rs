@@ -40,12 +40,14 @@ pub enum RunningState {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum UserRole {
-    #[serde(rename = "standard")]
-    Standard,
+    #[serde(rename = "user")]
+    User,
+    #[serde(rename = "trial_user")]
+    TrialUser,
     #[serde(rename = "beta_tester")]
     BetaTester,
-    #[serde(rename = "trial")]
-    Trial,
+    #[serde(rename = "admin")]
+    Admin,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

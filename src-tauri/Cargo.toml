@@ -34,10 +34,20 @@ log = "0.4"
 futures-util = "0.3"
 base64 = "0.22"
 raw-window-handle = "0.6"
+# WebSocket client for streaming loopback PCM to the ASR endpoint. native-tls keeps
+# the TLS backend consistent with reqwest (schannel on Windows, Secure Transport on macOS).
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+
+# Windows system-audio (loopback) capture. cpal opens the default render endpoint as an
+# input device, which WASAPI transparently captures in loopback mode.
+[target.'cfg(target_os = "windows")'.dependencies]
+cpal = "0.15"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.5"
 objc2-app-kit = { version = "0.2", features = ["NSWindow", "NSButton"] }
+# macOS system-audio capture via ScreenCaptureKit.
+screencapturekit = "1.5"
 
 [profile.dev]
 incremental = true

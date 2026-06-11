@@ -14,6 +14,7 @@ use crate::services::action_suggestion::ActionSuggestionService;
 use crate::services::app_state::AppStateService;
 use crate::services::health_check::HealthCheckService;
 use crate::services::live_suggestion::LiveSuggestionService;
+use crate::services::loopback::LoopbackService;
 use crate::services::push_notification::PushNotificationService;
 use crate::services::tools::ToolsService;
 use crate::services::transcript::TranscriptService;
@@ -28,6 +29,7 @@ pub struct AppServices {
     pub live_suggestion: Arc<LiveSuggestionService>,
     pub action_suggestion: Arc<ActionSuggestionService>,
     pub transcript: Arc<TranscriptService>,
+    pub loopback: Arc<LoopbackService>,
     pub tools: Arc<ToolsService>,
     pub window_control: Arc<WindowControlService>,
     pub zoom: Arc<ZoomService>,
@@ -69,6 +71,10 @@ pub fn run() {
             let transcript = Arc::new(TranscriptService::new(
                 Arc::clone(&app_state),
                 Arc::clone(&live_suggestion),
+            ));
+            let loopback = Arc::new(LoopbackService::new(
+                Arc::clone(&transcript),
+                Arc::clone(&config_store),
             ));
             let tools = Arc::new(ToolsService::new(Arc::clone(&app_state)));
             let window_control = Arc::new(WindowControlService::new(
@@ -120,6 +126,7 @@ pub fn run() {
                 live_suggestion: Arc::clone(&live_suggestion),
                 action_suggestion: Arc::clone(&action_suggestion),
                 transcript: Arc::clone(&transcript),
+                loopback,
                 tools,
                 window_control,
                 zoom,

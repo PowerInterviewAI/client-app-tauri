@@ -26,28 +26,33 @@ The app is built as a Tauri desktop client with a React frontend, targeting Wind
 
 ## Audio Capture and Transcription
 
-Audio capture and STT streaming run **in the renderer**, not in Rust:
+Capture is split by source: the microphone runs in the renderer, system audio runs natively.
 
-- Microphone audio is captured with `getUserMedia`; system/interviewer audio
-  (loopback) is captured with `getDisplayMedia({ audio: true })`, after which the
-  video track is stopped and dropped. See `src/services/live-transcription.service.ts`.
-- Each channel resamples to 16 kHz mono PCM16 in an `AudioWorklet` and streams it over
-  a WebSocket to the backend ASR endpoint (`/api/asr/streaming`). Partial/final
-  transcripts come back as JSON.
-- Channels map to speakers as: `ch_1` = microphone = self, `ch_0` = loopback =
-  interviewer. The renderer forwards transcripts to Rust via `transcription_ingest`,
-  where `src-tauri/src/services/transcript.rs` aggregates, de-dupes, and merges them.
+**Microphone (`ch_1`, self):** captured in the renderer with `getUserMedia`, resampled to
+16 kHz mono PCM16 in an `AudioWorklet`, and streamed over a WebSocket to the ASR endpoint
+(`/api/asr/streaming`). Transcripts are forwarded to Rust via `transcription_ingest`. See
+`src/services/live-transcription.service.ts`.
 
-The `enable_loopback_audio` / `disable_loopback_audio` commands in
-`src-tauri/src/commands/transcription.rs` do **not** capture audio. `enable_loopback_audio`
-only performs a macOS screen-recording permission pre-check (Windows is a no-op), and
-`disable_loopback_audio` is retained for IPC symmetry.
+**System/interviewer audio (`ch_0`, other):** captured natively in Rust, because
+`getDisplayMedia` system-audio capture is unreliable in the macOS WKWebView. See
+`src-tauri/src/services/loopback.rs`:
 
-### Platform note: macOS loopback
+- Windows: WASAPI loopback via `cpal` (the default render endpoint opened as an input
+  device, which transparently captures system output).
+- macOS: ScreenCaptureKit audio capture (requires screen-recording permission).
+- Captured audio is downmixed to mono, resampled to 16 kHz PCM16 (streaming linear
+  resampler), and streamed over its own WebSocket to the same ASR endpoint. Returned
+  transcripts are ingested directly as `ch_0`, with no renderer round-trip.
 
-`getDisplayMedia` system-audio capture is well supported on Windows (Chromium WebView2)
-but is unreliable in the macOS WKWebView. Loopback (interviewer) audio capture on macOS
-should be verified on real hardware; if unsupported, it requires a native capture path.
+The renderer starts/stops native capture through the `enable_loopback_audio` /
+`disable_loopback_audio` commands. Both the mic and loopback channels feed the same
+`src-tauri/src/services/transcript.rs`, which aggregates, de-dupes, and merges them.
+
+### Platform note: macOS capture is unverified locally
+
+The macOS ScreenCaptureKit path is gated behind `#[cfg(target_os = "macos")]` and is not
+compiled by `cargo check` on Windows. It is written against the documented
+`screencapturekit` 1.x API and must be validated by the macOS CI build / on real hardware.
 
 ## Key Implementation Notes
 

@@ -5,6 +5,7 @@ pub mod app_state;
 pub mod auth;
 pub mod health_check;
 pub mod live_suggestion;
+pub mod loopback;
 pub mod payment;
 pub mod push_notification;
 pub mod tools;

@@ -17,6 +17,7 @@ pub const API_LLM_VALIDATE: &str = "/api/llm/validate";
 pub const API_LLM_UPLOAD_IMAGE: &str = "/api/llm/upload-image";
 pub const API_LLM_ACTION_SUGGESTION: &str = "/api/llm/action-suggestion";
 pub const API_LLM_LIVE_SUGGESTION: &str = "/api/llm/live-suggestion";
+pub const API_ASR_STREAMING: &str = "/api/asr/streaming";
 pub const API_LLM_GET_THUMB: &str = "/api/llm/get-thumb";
 pub const API_PAYMENT_PLANS: &str = "/api/payment/plans";
 pub const API_PAYMENT_CURRENCIES: &str = "/api/payment/currencies";

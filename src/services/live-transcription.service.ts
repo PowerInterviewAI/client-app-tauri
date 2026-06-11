@@ -9,7 +9,6 @@ const WS_OPEN_TIMEOUT_MS = 5000;
 const WS_RETRY_MAX_ATTEMPTS = 5;
 const WS_RETRY_BASE_DELAY_MS = 1000;
 const WS_RETRY_MAX_DELAY_MS = 8000;
-const GET_DISPLAY_MEDIA_TIMEOUT_MS = 20000;
 const isMacOS = navigator.platform.toUpperCase().includes('MAC');
 const BACKEND_BASE_URL =
   isMacOS || !import.meta.env.DEV ? 'https://api.powerinterviewai.com' : 'http://localhost:8080';
@@ -280,7 +279,6 @@ class AudioWsStream {
 
 class LiveTranscriptionService {
   private micStream: MediaStream | null = null;
-  private loopbackStream: MediaStream | null = null;
   private channels: AudioWsStream[] = [];
 
   async start(audioInputDeviceName: string, sessionToken: string): Promise<void> {
@@ -288,8 +286,9 @@ class LiveTranscriptionService {
     if (!electron) throw new Error('Electron API not available');
     await electron.transcription.setSessionToken(sessionToken);
 
-    // If anything below fails partway (permission denial, timeout, websocket failure),
-    // stop() must run so the microphone and loopback tracks never stay open.
+    // The renderer only handles the microphone (ch_1, self). System/interviewer audio
+    // (ch_0) is captured and streamed natively by the Rust backend. If anything fails
+    // partway, stop() must run so the mic track and native capture never stay open.
     try {
       const micDeviceId = await this.resolveMicDeviceId(audioInputDeviceName);
       this.micStream = await navigator.mediaDevices.getUserMedia({
@@ -297,34 +296,17 @@ class LiveTranscriptionService {
         video: false,
       });
 
-      await electron.transcription.enableLoopbackAudio();
-      let displayStream: MediaStream;
+      // Start native loopback capture + streaming. A failure here is typically the macOS
+      // screen-recording permission being denied.
       try {
-        displayStream = await Promise.race([
-          navigator.mediaDevices.getDisplayMedia({ audio: true, video: true }),
-          new Promise<never>((_, reject) =>
-            window.setTimeout(() => reject(new Error('timeout')), GET_DISPLAY_MEDIA_TIMEOUT_MS)
-          ),
-        ]);
+        await electron.transcription.enableLoopbackAudio();
       } catch (err) {
-        await electron.transcription.disableLoopbackAudio();
-        // User denied the OS screen-recording permission dialog, or timed out.
-        // The pre-flight check passes 'not-determined' through so the OS can prompt here.
-        const isPermissionDenied = err instanceof DOMException && err.name === 'NotAllowedError';
-        const isTimeout = err instanceof Error && err.message === 'timeout';
-        if (isPermissionDenied || isTimeout) {
+        if (isMacOS) {
           await electron.permissions.showDeniedDialog('screen-recording');
           throw Object.assign(new Error(), { name: 'PermissionError' });
         }
         throw err;
       }
-      await electron.transcription.disableLoopbackAudio();
-
-      displayStream.getVideoTracks().forEach((track) => {
-        track.stop();
-        displayStream.removeTrack(track);
-      });
-      this.loopbackStream = displayStream;
 
       const onTranscript = async (payload: {
         channel: Channel;
@@ -335,14 +317,8 @@ class LiveTranscriptionService {
       };
 
       const micChannel = new AudioWsStream('ch_1', this.micStream, sessionToken, onTranscript);
-      const loopbackChannel = new AudioWsStream(
-        'ch_0',
-        this.loopbackStream,
-        sessionToken,
-        onTranscript
-      );
-      this.channels = [micChannel, loopbackChannel];
-      await Promise.all(this.channels.map((channel) => channel.start()));
+      this.channels = [micChannel];
+      await micChannel.start();
     } catch (err) {
       await this.stop();
       throw err;
@@ -350,13 +326,14 @@ class LiveTranscriptionService {
   }
 
   async stop(): Promise<void> {
+    const electron = getElectron();
+    await electron?.transcription.disableLoopbackAudio();
+
     await Promise.all(this.channels.map((channel) => channel.stop()));
     this.channels = [];
 
     this.micStream?.getTracks().forEach((track) => track.stop());
-    this.loopbackStream?.getTracks().forEach((track) => track.stop());
     this.micStream = null;
-    this.loopbackStream = null;
   }
 
   private async resolveMicDeviceId(deviceName: string): Promise<string | null> {

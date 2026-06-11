@@ -1,7 +1,10 @@
 import { getElectron } from '@/lib/utils';
 
 const SAMPLE_RATE = 16000;
-const MAX_WS_BUFFERED_BYTES = SAMPLE_RATE * 0.3;
+const BYTES_PER_SAMPLE = 2; // 16-bit PCM
+// Drop outgoing audio once the socket has more than ~0.3s of PCM queued, so a slow
+// or stalled connection cannot grow an unbounded send buffer (latency/memory).
+const MAX_WS_BUFFERED_BYTES = SAMPLE_RATE * BYTES_PER_SAMPLE * 0.3;
 const WS_OPEN_TIMEOUT_MS = 5000;
 const WS_RETRY_MAX_ATTEMPTS = 5;
 const WS_RETRY_BASE_DELAY_MS = 1000;
@@ -285,58 +288,65 @@ class LiveTranscriptionService {
     if (!electron) throw new Error('Electron API not available');
     await electron.transcription.setSessionToken(sessionToken);
 
-    const micDeviceId = await this.resolveMicDeviceId(audioInputDeviceName);
-    this.micStream = await navigator.mediaDevices.getUserMedia({
-      audio: micDeviceId ? { deviceId: { exact: micDeviceId } } : true,
-      video: false,
-    });
-
-    await electron.transcription.enableLoopbackAudio();
-    let displayStream: MediaStream;
+    // If anything below fails partway (permission denial, timeout, websocket failure),
+    // stop() must run so the microphone and loopback tracks never stay open.
     try {
-      displayStream = await Promise.race([
-        navigator.mediaDevices.getDisplayMedia({ audio: true, video: true }),
-        new Promise<never>((_, reject) =>
-          window.setTimeout(() => reject(new Error('timeout')), GET_DISPLAY_MEDIA_TIMEOUT_MS)
-        ),
-      ]);
-    } catch (err) {
-      await electron.transcription.disableLoopbackAudio();
-      // User denied the OS screen-recording permission dialog, or timed out.
-      // The pre-flight check passes 'not-determined' through so the OS can prompt here.
-      const isPermissionDenied = err instanceof DOMException && err.name === 'NotAllowedError';
-      const isTimeout = err instanceof Error && err.message === 'timeout';
-      if (isPermissionDenied || isTimeout) {
-        await electron.permissions.showDeniedDialog('screen-recording');
-        throw Object.assign(new Error(), { name: 'PermissionError' });
+      const micDeviceId = await this.resolveMicDeviceId(audioInputDeviceName);
+      this.micStream = await navigator.mediaDevices.getUserMedia({
+        audio: micDeviceId ? { deviceId: { exact: micDeviceId } } : true,
+        video: false,
+      });
+
+      await electron.transcription.enableLoopbackAudio();
+      let displayStream: MediaStream;
+      try {
+        displayStream = await Promise.race([
+          navigator.mediaDevices.getDisplayMedia({ audio: true, video: true }),
+          new Promise<never>((_, reject) =>
+            window.setTimeout(() => reject(new Error('timeout')), GET_DISPLAY_MEDIA_TIMEOUT_MS)
+          ),
+        ]);
+      } catch (err) {
+        await electron.transcription.disableLoopbackAudio();
+        // User denied the OS screen-recording permission dialog, or timed out.
+        // The pre-flight check passes 'not-determined' through so the OS can prompt here.
+        const isPermissionDenied = err instanceof DOMException && err.name === 'NotAllowedError';
+        const isTimeout = err instanceof Error && err.message === 'timeout';
+        if (isPermissionDenied || isTimeout) {
+          await electron.permissions.showDeniedDialog('screen-recording');
+          throw Object.assign(new Error(), { name: 'PermissionError' });
+        }
+        throw err;
       }
+      await electron.transcription.disableLoopbackAudio();
+
+      displayStream.getVideoTracks().forEach((track) => {
+        track.stop();
+        displayStream.removeTrack(track);
+      });
+      this.loopbackStream = displayStream;
+
+      const onTranscript = async (payload: {
+        channel: Channel;
+        type: 'partial' | 'final';
+        text: string;
+      }) => {
+        await electron.transcription.ingest(payload);
+      };
+
+      const micChannel = new AudioWsStream('ch_1', this.micStream, sessionToken, onTranscript);
+      const loopbackChannel = new AudioWsStream(
+        'ch_0',
+        this.loopbackStream,
+        sessionToken,
+        onTranscript
+      );
+      this.channels = [micChannel, loopbackChannel];
+      await Promise.all(this.channels.map((channel) => channel.start()));
+    } catch (err) {
+      await this.stop();
       throw err;
     }
-    await electron.transcription.disableLoopbackAudio();
-
-    displayStream.getVideoTracks().forEach((track) => {
-      track.stop();
-      displayStream.removeTrack(track);
-    });
-    this.loopbackStream = displayStream;
-
-    const onTranscript = async (payload: {
-      channel: Channel;
-      type: 'partial' | 'final';
-      text: string;
-    }) => {
-      await electron.transcription.ingest(payload);
-    };
-
-    const micChannel = new AudioWsStream('ch_1', this.micStream, sessionToken, onTranscript);
-    const loopbackChannel = new AudioWsStream(
-      'ch_0',
-      this.loopbackStream,
-      sessionToken,
-      onTranscript
-    );
-    this.channels = [micChannel, loopbackChannel];
-    await Promise.all(this.channels.map((channel) => channel.start()));
   }
 
   async stop(): Promise<void> {

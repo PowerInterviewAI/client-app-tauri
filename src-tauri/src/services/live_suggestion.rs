@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -13,7 +13,9 @@ use crate::types::app_state::{LiveSuggestion, Speaker, SuggestionState, Transcri
 use crate::utils::{generate_uuid, now_ms};
 
 pub struct LiveSuggestionService {
-    suggestions: Arc<Mutex<HashMap<i64, LiveSuggestion>>>,
+    // BTreeMap keyed by timestamp so `.values()` always yields suggestions in
+    // chronological order; the renderer relies on array order to mark the newest item.
+    suggestions: Arc<Mutex<BTreeMap<i64, LiveSuggestion>>>,
     abort_flags: Arc<Mutex<HashMap<String, Arc<AtomicBool>>>>,
     app_state: Arc<AppStateService>,
     config_store: Arc<ConfigStore>,
@@ -22,7 +24,7 @@ pub struct LiveSuggestionService {
 impl LiveSuggestionService {
     pub fn new(app_state: Arc<AppStateService>, config_store: Arc<ConfigStore>) -> Self {
         Self {
-            suggestions: Arc::new(Mutex::new(HashMap::new())),
+            suggestions: Arc::new(Mutex::new(BTreeMap::new())),
             abort_flags: Arc::new(Mutex::new(HashMap::new())),
             app_state,
             config_store,
@@ -101,7 +103,7 @@ impl LiveSuggestionService {
                 ApiClient::new().with_token(&token)
             };
 
-            let emit = |map: &HashMap<i64, LiveSuggestion>| {
+            let emit = |map: &BTreeMap<i64, LiveSuggestion>| {
                 let list: Vec<LiveSuggestion> = map.values().cloned().collect();
                 app_state.set_live_suggestions(list);
             };

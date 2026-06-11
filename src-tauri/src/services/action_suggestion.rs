@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -18,7 +18,9 @@ use crate::types::app_state::{ActionSuggestion, RunningState, Speaker, Suggestio
 use crate::utils::{generate_uuid, now_ms};
 
 pub struct ActionSuggestionService {
-    suggestions: Arc<Mutex<HashMap<i64, ActionSuggestion>>>,
+    // BTreeMap keyed by timestamp so `.values()` yields suggestions oldest-first;
+    // the renderer marks the last array element as the active/streaming one.
+    suggestions: Arc<Mutex<BTreeMap<i64, ActionSuggestion>>>,
     uploaded_images: Arc<Mutex<Vec<String>>>,
     abort_flags: Arc<Mutex<HashMap<String, Arc<AtomicBool>>>>,
     app_state: Arc<AppStateService>,
@@ -35,7 +37,7 @@ impl ActionSuggestionService {
         action_lock: Arc<ActionLockService>,
     ) -> Self {
         Self {
-            suggestions: Arc::new(Mutex::new(HashMap::new())),
+            suggestions: Arc::new(Mutex::new(BTreeMap::new())),
             uploaded_images: Arc::new(Mutex::new(vec![])),
             abort_flags: Arc::new(Mutex::new(HashMap::new())),
             app_state,
@@ -190,17 +192,12 @@ impl ActionSuggestionService {
         let app_state = Arc::clone(&self.app_state);
         let action_lock = Arc::clone(&self.action_lock);
         let abort = Arc::clone(&abort_flag);
-        let uploaded = Arc::clone(&self.uploaded_images);
 
         tokio::spawn(async move {
             let client = if token.is_empty() { ApiClient::new() } else { ApiClient::new().with_token(&token) };
 
-            let emit = |map: &HashMap<i64, ActionSuggestion>, imgs: &Vec<String>| {
+            let emit = |map: &BTreeMap<i64, ActionSuggestion>| {
                 let list: Vec<ActionSuggestion> = map.values().cloned().collect();
-                if !imgs.is_empty() {
-                    // pending prompt still shown - handled by emit_suggestions, skip here
-                }
-                let _ = imgs;
                 app_state.set_action_suggestions(list);
             };
 
@@ -209,14 +206,14 @@ impl ActionSuggestionService {
                     let error_msg = crate::utils::llm_error_message(&e);
                     let mut map = suggestions.lock();
                     if let Some(s) = map.get_mut(&timestamp) { s.state = SuggestionState::Error; s.error = error_msg; }
-                    emit(&map, &uploaded.lock());
+                    emit(&map);
                     action_lock.release(ActionType::CaptureSuggestion);
                 }
                 Ok(resp) => {
                     {
                         let mut map = suggestions.lock();
                         if let Some(s) = map.get_mut(&timestamp) { s.state = SuggestionState::Loading; }
-                        emit(&map, &uploaded.lock());
+                        emit(&map);
                     }
                     let mut stream = resp.bytes_stream();
                     let mut answer = String::new();
@@ -226,7 +223,7 @@ impl ActionSuggestionService {
                         if abort.load(Ordering::Acquire) {
                             let mut map = suggestions.lock();
                             if let Some(s) = map.get_mut(&timestamp) { s.state = SuggestionState::Stopped; }
-                            emit(&map, &uploaded.lock());
+                            emit(&map);
                             action_lock.release(ActionType::CaptureSuggestion);
                             return;
                         }
@@ -235,14 +232,14 @@ impl ActionSuggestionService {
                             crate::utils::drain_utf8(&mut pending, &mut answer);
                             let mut map = suggestions.lock();
                             if let Some(s) = map.get_mut(&timestamp) { s.answer = answer.clone(); s.state = SuggestionState::Loading; }
-                            emit(&map, &uploaded.lock());
+                            emit(&map);
                         }
                     }
                     let mut map = suggestions.lock();
                     if let Some(s) = map.get_mut(&timestamp) {
                         if s.state == SuggestionState::Loading { s.state = SuggestionState::Success; }
                     }
-                    emit(&map, &uploaded.lock());
+                    emit(&map);
                     action_lock.release(ActionType::CaptureSuggestion);
                 }
             }

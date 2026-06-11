@@ -17,7 +17,7 @@ on:
         default: true
         type: boolean
       release_notes:
-        description: "What's changed (optional, leave empty for default notes)"
+        description: "What's changed, markdown (optional, default if empty; use \\n for line breaks)"
         required: false
         type: string
         default: ''

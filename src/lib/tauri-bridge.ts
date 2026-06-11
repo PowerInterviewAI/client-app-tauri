@@ -10,6 +10,27 @@ import { listen } from '@tauri-apps/api/event';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
 
+// `@mohtasham/md-to-docx` statically imports `undici` (for Node-only image fetching),
+// and undici reads `process.versions.node` / `process.platform` / etc. at module-evaluation
+// time. The Tauri webview has no `process` global, so loading that chunk throws
+// "process is not defined" before our code ever runs. Stub just enough of `process`
+// for undici's module init to complete; the image-fetch path itself is never used here.
+function ensureProcessPolyfill(): void {
+  const target = globalThis as { process?: unknown };
+  if (target.process !== undefined) return;
+  target.process = {
+    env: {},
+    platform: 'browser',
+    arch: 'x64',
+    version: 'v20.0.0',
+    versions: { node: '20.0.0' },
+    emitWarning: () => {},
+    nextTick: (fn: (...args: unknown[]) => void, ...args: unknown[]) => {
+      queueMicrotask(() => fn(...args));
+    },
+  };
+}
+
 // Helper: subscribe to a Tauri event and return a synchronous cleanup fn
 function onEvent<T>(event: string, callback: (payload: T) => void): () => void {
   const unlistenPromise = listen<T>(event, (e) => callback(e.payload));
@@ -141,6 +162,7 @@ export const tauriApi = {
       }
       const markdown = transcriptsToMarkdown(transcripts as TranscriptItem[]);
       try {
+        ensureProcessPolyfill();
         const { convertMarkdownToDocx } = await import('@mohtasham/md-to-docx');
         const blob: Blob = await convertMarkdownToDocx(markdown);
         const arrayBuffer = await blob.arrayBuffer();

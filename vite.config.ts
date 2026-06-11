@@ -20,6 +20,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // @mohtasham/md-to-docx pulls in `undici` for a remote-image-fetch path this
+      // app never enables; the real package crashes in the Tauri webview (see
+      // src/lib/undici-stub.ts for details).
+      undici: path.resolve(__dirname, './src/lib/undici-stub.ts'),
     },
   },
   // Vite dev server settings for Tauri

@@ -30,7 +30,7 @@ export function ToolsGroup({ getDisabled }: ToolsGroupProps) {
       toast.success('Interview exported successfully');
     } catch (error) {
       console.error(error);
-      toast.error('Failed to export interview');
+      toast.error(error instanceof Error ? error.message : 'Failed to export interview');
     }
   };
 

@@ -136,6 +136,9 @@ export const tauriApi = {
     exportTranscript: async () => {
       // Fetch transcripts from Rust, generate DOCX in JS (keeps md-to-docx dependency)
       const transcripts = await invoke<unknown[]>('tools_get_transcripts_for_export');
+      if (transcripts.length === 0) {
+        throw new Error('No transcript to export yet');
+      }
       const markdown = transcriptsToMarkdown(transcripts as TranscriptItem[]);
       try {
         const { convertMarkdownToDocx } = await import('@mohtasham/md-to-docx');

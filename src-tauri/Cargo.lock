@@ -3058,7 +3058,7 @@ dependencies = [
 
 [[package]]
 name = "power-interview-ai"
-version = "1.5.2"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",

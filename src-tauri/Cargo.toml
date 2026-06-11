@@ -1,6 +1,6 @@
 [package]
 name = "power-interview-ai"
-version = "1.5.2"
+version = "2.0.0"
 description = "AI-powered live interview assistant"
 authors = ["Power Interview AI"]
 edition = "2021"

@@ -124,7 +124,7 @@ export const tauriApi = {
     ingest: (payload: { channel: string; type: string; text: string }) =>
       invoke('transcription_ingest', {
         channel: payload.channel,
-        transcript_type: payload.type,
+        transcriptType: payload.type,
         text: payload.text,
       }),
     setSessionToken: (token: string) => invoke('transcription_set_session_token', { token }),

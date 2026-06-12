@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Hotkey, HOTKEY_GROUPS, HOTKEYS, formatCombo } from '@/lib/hotkeys';
+import { Hotkey, HOTKEY_GROUPS, HOTKEYS, formatHotkey } from '@/lib/hotkeys';
 import { cn } from '@/lib/utils';
 
 import ExternalLink from './external-link';
@@ -71,7 +71,7 @@ export default function DocumentationDialog({ open, onOpenChange }: Documentatio
                     <React.Fragment key={hk}>
                       <div className="col-span-1">
                         <div className="px-2 py-1 rounded text-[11px] font-medium min-w-22.5 bg-muted">
-                          {formatCombo(info.combo)}
+                          {formatHotkey(info)}
                         </div>
                       </div>
                       <div className="col-span-2 text-sm">{info.description}</div>

@@ -265,54 +265,73 @@ fn register_hotkeys(handle: &AppHandle) {
         Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState,
     };
 
+    // Base modifier for most app shortcuts: Ctrl+Shift on Windows/Linux,
+    // Ctrl+Option on macOS. Checked against Apple's documented default
+    // shortcuts (support.apple.com/en-us/102650): neither Ctrl+Option+<key>
+    // nor Ctrl+Shift+<key> appear there for letters, digits, or function
+    // keys, so both bases are conflict-free on their platform.
+    let base = if cfg!(target_os = "macos") {
+        Modifiers::CONTROL | Modifiers::ALT
+    } else {
+        Modifiers::CONTROL | Modifiers::SHIFT
+    };
+
+    // Move window: base plus the modifier `base` is missing (Shift on
+    // macOS, Alt on Windows/Linux) - both resolve to Ctrl+Alt+Shift.
+    let move_mods = Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT;
+
+    // Resize window: base plus Super (Cmd on macOS, the Windows key on
+    // Windows/Linux).
+    let resize_mods = base | Modifiers::SUPER;
+
     let _h = handle.clone();
     if let Err(e) = handle.global_shortcut().on_shortcuts(
         [
-            // Stop assistant: Ctrl+Shift+Q
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyQ),
-            // Stealth toggle: Ctrl+Shift+M
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyM),
-            // Opacity toggle: Ctrl+Shift+N
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyN),
-            // Toggle hotkeys panel: Ctrl+Shift+H
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyH),
-            // Zoom: Ctrl+Shift+= / - / 0
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Equal),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Minus),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Digit0),
-            // Scroll live suggestions: Ctrl+Shift+K/J/L
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyK),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyJ),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyL),
-            // Scroll action suggestions: Ctrl+Shift+I/U/O
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyI),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyU),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyO),
-            // Action suggestion: Ctrl+Shift+F9/F10/F11/F12
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::F9),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::F10),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::F11),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::F12),
-            // Window positions: Ctrl+Shift+1-9
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Digit1),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Digit2),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Digit3),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Digit4),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Digit5),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Digit6),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Digit7),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Digit8),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Digit9),
+            // Stop assistant
+            Shortcut::new(Some(base), Code::KeyQ),
+            // Stealth toggle
+            Shortcut::new(Some(base), Code::KeyM),
+            // Opacity toggle
+            Shortcut::new(Some(base), Code::KeyN),
+            // Toggle hotkeys panel
+            Shortcut::new(Some(base), Code::KeyH),
+            // Zoom: base+= / base+- / base+0
+            Shortcut::new(Some(base), Code::Equal),
+            Shortcut::new(Some(base), Code::Minus),
+            Shortcut::new(Some(base), Code::Digit0),
+            // Scroll live suggestions: base+K/J/L
+            Shortcut::new(Some(base), Code::KeyK),
+            Shortcut::new(Some(base), Code::KeyJ),
+            Shortcut::new(Some(base), Code::KeyL),
+            // Scroll action suggestions: base+I/U/O
+            Shortcut::new(Some(base), Code::KeyI),
+            Shortcut::new(Some(base), Code::KeyU),
+            Shortcut::new(Some(base), Code::KeyO),
+            // Action suggestion: base+F9/F10/F11/F12
+            Shortcut::new(Some(base), Code::F9),
+            Shortcut::new(Some(base), Code::F10),
+            Shortcut::new(Some(base), Code::F11),
+            Shortcut::new(Some(base), Code::F12),
+            // Window positions: base+1-9
+            Shortcut::new(Some(base), Code::Digit1),
+            Shortcut::new(Some(base), Code::Digit2),
+            Shortcut::new(Some(base), Code::Digit3),
+            Shortcut::new(Some(base), Code::Digit4),
+            Shortcut::new(Some(base), Code::Digit5),
+            Shortcut::new(Some(base), Code::Digit6),
+            Shortcut::new(Some(base), Code::Digit7),
+            Shortcut::new(Some(base), Code::Digit8),
+            Shortcut::new(Some(base), Code::Digit9),
             // Move window: Ctrl+Alt+Shift+Arrow
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT), Code::ArrowUp),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT), Code::ArrowDown),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT), Code::ArrowLeft),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT), Code::ArrowRight),
-            // Resize window: Ctrl+Win+Shift+Arrow
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SUPER | Modifiers::SHIFT), Code::ArrowUp),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SUPER | Modifiers::SHIFT), Code::ArrowDown),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SUPER | Modifiers::SHIFT), Code::ArrowLeft),
-            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SUPER | Modifiers::SHIFT), Code::ArrowRight),
+            Shortcut::new(Some(move_mods), Code::ArrowUp),
+            Shortcut::new(Some(move_mods), Code::ArrowDown),
+            Shortcut::new(Some(move_mods), Code::ArrowLeft),
+            Shortcut::new(Some(move_mods), Code::ArrowRight),
+            // Resize window: base+Super+Arrow
+            Shortcut::new(Some(resize_mods), Code::ArrowUp),
+            Shortcut::new(Some(resize_mods), Code::ArrowDown),
+            Shortcut::new(Some(resize_mods), Code::ArrowLeft),
+            Shortcut::new(Some(resize_mods), Code::ArrowRight),
         ],
         move |app, shortcut, event| {
             let services = match app.try_state::<AppServices>() {

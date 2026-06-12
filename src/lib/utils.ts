@@ -13,3 +13,19 @@ export const getTauriApi = () => {
 export const getCurrentTimestamp = () => {
   return Date.now();
 };
+
+export function isMacPlatform(): boolean {
+  try {
+    const nav =
+      typeof navigator !== 'undefined'
+        ? (navigator as Navigator & { userAgent?: string; platform?: string })
+        : undefined;
+    return !!(
+      nav &&
+      (/(Mac|iPhone|iPad|iPod)/.test(nav.platform || '') ||
+        /Macintosh|Mac OS X/.test(nav.userAgent || ''))
+    );
+  } catch {
+    return false;
+  }
+}

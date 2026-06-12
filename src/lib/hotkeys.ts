@@ -145,11 +145,14 @@ export function formatCombo(combo: string): string {
         /Macintosh|Mac OS X/.test(nav.userAgent || ''))
     );
     if (!isMac) return combo;
+    // The Rust backend registers Modifiers::CONTROL and Modifiers::SUPER
+    // literally with no macOS branch, so on macOS the app listens for the
+    // physical Control key (⌃) and the Command key (⌘) respectively.
     return combo
-      .replace(/\bCtrl\b/g, '⌘')
+      .replace(/\bCtrl\b/g, '⌃')
       .replace(/\bAlt\b/g, '⌥')
       .replace(/\bShift\b/g, '⇧')
-      .replace(/\bWin\b/g, '⌃');
+      .replace(/\bWin\b/g, '⌘');
   } catch (e) {
     return combo;
   }

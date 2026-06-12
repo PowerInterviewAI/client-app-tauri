@@ -73,7 +73,7 @@ function TranscriptPanel({ transcripts, style }: TranscriptionPanelProps) {
                     {new Date(item.timestamp).toLocaleString()}
                   </span>
                 </div>
-                <div className="text-sm text-foreground/90 leading-relaxed text-wrap">
+                <div className="text-sm text-foreground leading-relaxed text-wrap">
                   {item.text}
                 </div>
               </div>

@@ -12,6 +12,24 @@ pub fn window_close(app: AppHandle) {
 }
 
 #[tauri::command]
+pub fn window_minimize(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.minimize();
+    }
+}
+
+#[tauri::command]
+pub fn window_toggle_maximize(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        if win.is_maximized().unwrap_or(false) {
+            let _ = win.unmaximize();
+        } else {
+            let _ = win.maximize();
+        }
+    }
+}
+
+#[tauri::command]
 pub fn zoom_in(services: State<'_, AppServices>) {
     services.zoom.adjust(ZOOM_STEP);
 }

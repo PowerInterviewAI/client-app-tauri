@@ -222,18 +222,37 @@ aborts the in-flight request.
 `WindowControlService` (`src-tauri/src/services/window_control.rs`):
 
 - **Stealth mode** (`window_toggle_stealth`, requires `isLoggedIn`): makes the window
-  click-through (`set_ignore_cursor_events`), always-on-top, and 60% opaque (custom
-  `set_window_opacity` using `SetLayeredWindowAttributes` on Windows or `setAlphaValue:` on
-  macOS). On macOS it also switches the app's activation policy to `Accessory` (hides the Dock
-  icon). The `stealth-changed` event toggles a `stealth` class on `<body>` (see
-  `tauri-bridge.ts`), and `AppState.isStealth` / `ConfigStore` are updated. While in stealth, a
-  compact `StatusPanel` is shown instead of the full `ControlPanel`.
-- **Opacity toggle** (`window_toggle_opacity`, only while in stealth): cycles through
-  `OPACITY_LEVELS = [0.2, 0.6, 0.9]`.
+  click-through (`set_ignore_cursor_events`) and always-on-top. On macOS it also switches the
+  app's activation policy to `Accessory` (hides the Dock icon). The `stealth-changed` event
+  toggles a `stealth` class on `<body>` (see `tauri-bridge.ts`), and `AppState.isStealth` /
+  `ConfigStore` are updated. While in stealth, a compact `StatusPanel` is shown instead of the
+  full `ControlPanel`.
+- **Translucency**: the main window is created `transparent` (per-pixel alpha; requires
+  `app.macOSPrivateApi` + the `macos-private-api` Cargo feature, which keeps the macOS build off
+  the App Store). Dimming is done in CSS rather than at the window level. To avoid opacity
+  accumulating across the overlapping panels (main > page > cards), stealth zeroes the
+  `bg-background`/`bg-card` *utilities* (not the tokens, so `text-background` etc. stay opaque)
+  and paints the translucent backdrop exactly once on the window-filling `<main>`
+  (`body.stealth` block in `index.css`). The result is two opacity levels only: fully opaque
+  text/icons (content panels use `text-foreground`, no alpha) over a single uniform translucent
+  background. Borders (`--border`) and images (`img`) follow the same `--stealth-bg-alpha` so the
+  overlay dims uniformly.
+- **Opacity toggle** (`window_toggle_opacity`, only while in stealth): `WindowControlService`
+  cycles an index over `OPACITY_LEVEL_COUNT` (3) and emits `stealth-opacity-level`; the bridge
+  maps it to the single `--stealth-bg-alpha` CSS variable (`STEALTH_ALPHA_LEVELS` in
+  `tauri-bridge.ts`, range `0.3-0.9`). The level is persisted to `config.window.opacityLevel`,
+  restored on launch, and re-applied (emitted) each time stealth is entered.
+- **Hotkeys panel**: stealth is click-through, so hover can't open it. `Ctrl+Shift+H` emits
+  `hotkey-toggle-hotkeys`, which `StatusPanel` (`onHotkeyToggleHotkeys` in the bridge) uses to
+  toggle a centered modal listing the shortcuts (normal, non-inverted theme).
 - **Window positioning**: `window_move_to_position` snaps the window to one of nine
   screen-relative presets (corners/edges/center) on the current monitor;
   `window_move_by_arrow` / `window_resize_by_arrow` nudge position/size by 20px, clamped to
-  `MIN_WIDTH`/`MIN_HEIGHT` (760x480).
+  `MIN_WIDTH`/`MIN_HEIGHT`. The held-arrow hotkeys auto-repeat: the handler acts once on press,
+  then a bounded loop keyed to `WindowControlService`'s repeat token continues until release
+  (`bump_repeat`/`repeat_token`/`stop_repeat`), since global shortcuts don't emit OS key-repeat.
+- **Window buttons** (Windows titlebar, hidden in stealth): `window_minimize` and
+  `window_toggle_maximize` (maximize/unmaximize) alongside `window_close`.
 - **Window bounds** are saved on `CloseRequested` and restored on next launch (also saved
   explicitly before an auto-update install, since `install()` exits/restarts the process without
   firing the close event).
@@ -246,13 +265,16 @@ aborts the in-flight request.
 
 ## Global Hotkeys
 
-Registered once at startup (`lib.rs::register_hotkeys`), all `Ctrl+Shift+<key>`:
+Registered once at startup (`lib.rs::register_hotkeys`). Most are `Ctrl+Shift+<key>`; the
+move/resize bindings add `Alt` / `Win` respectively and are distinguished by modifier in the
+handler:
 
 | Hotkey | Action |
 | --- | --- |
 | `Q` | Emit `hotkey-stop-assistant` (renderer calls `stopAssistant()`). |
 | `M` | Toggle stealth mode. |
 | `N` | Toggle opacity (stealth only). |
+| `H` | Show/hide the hotkeys panel (stealth is click-through, so this replaces hover). |
 | `=` / `-` / `0` | Zoom in / out / reset. |
 | `K` / `J` / `L` | Scroll live-suggestions panel up / down / to end (`hotkey-scroll`, section `"0"`). |
 | `I` / `U` / `O` | Scroll action-suggestions panel up / down / to end (`hotkey-scroll`, section `"1"`). |
@@ -261,6 +283,8 @@ Registered once at startup (`lib.rs::register_hotkeys`), all `Ctrl+Shift+<key>`:
 | `F11` | Generate an action suggestion from queued images + transcript. |
 | `F12` | Capture a screenshot (if none queued) then generate an action suggestion. |
 | `1`-`9` | Move the window to one of nine screen positions (bottom/middle/top x left/center/right). |
+| `Ctrl+Alt+Shift+Arrow` | Move the window 20px in the arrow direction; hold to repeat (`move_by_arrow`). |
+| `Ctrl+Win+Shift+Arrow` | Resize the window 20px in the arrow direction; hold to repeat (`resize_by_arrow`). |
 
 ## Assistant Lifecycle
 

@@ -23,6 +23,9 @@ declare global {
     // Hotkey stop assistant event
     onHotkeyStopAssistant: (callback: () => void) => () => void;
 
+    // Hotkey to toggle the hotkeys panel (stealth is click-through, so hover can't open it)
+    onHotkeyToggleHotkeys: (callback: () => void) => () => void;
+
     // Configuration management
     config: {
       get: () => Promise<Config>;
@@ -132,6 +135,8 @@ declare global {
 
     // Window controls
     close: () => void;
+    minimize: () => void;
+    toggleMaximize: () => void;
 
     // Zoom controls
     zoom: {

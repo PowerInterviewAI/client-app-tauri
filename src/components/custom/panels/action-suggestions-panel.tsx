@@ -205,13 +205,13 @@ function ActionSuggestionsPanel({ actionSuggestions = [], style }: ActionSuggest
                             <img
                               key={i}
                               src={url}
-                              className="h-12 w-16 object-cover rounded-md border border-blue-400 bg-muted"
+                              className="stealth-img-dim h-12 w-16 object-cover rounded-md border border-blue-400/30 bg-muted/30"
                               alt={`thumb-${i}`}
                             />
                           ) : (
                             <div
                               key={i}
-                              className="h-12 w-16 flex items-center justify-center rounded-md border border-blue-400 bg-muted"
+                              className="h-12 w-16 flex items-center justify-center rounded-md border border-blue-400/30 bg-muted/30"
                             >
                               <ImageUp className="h-4 w-4 text-muted-foreground" />
                             </div>
@@ -224,7 +224,7 @@ function ActionSuggestionsPanel({ actionSuggestions = [], style }: ActionSuggest
                   <div className="flex-1">
                     {(s.state === SuggestionState.Loading ||
                       s.state === SuggestionState.Success) && (
-                      <div className="text-sm text-foreground/90 leading-relaxed">
+                      <div className="text-sm text-foreground leading-relaxed">
                         <div className="text-sm">
                           <SafeMarkdown content={s.answer} />
                         </div>

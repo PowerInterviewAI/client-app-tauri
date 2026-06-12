@@ -1,4 +1,4 @@
-import { EyeOff, Moon, Sun } from 'lucide-react';
+import { EyeOff, Minus, Moon, Square, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import faviconSvg from '/favicon.svg';
@@ -40,6 +40,14 @@ export default function Titlebar() {
   const handleClose = () => {
     const api = window.tauriApi;
     if (api?.close) api.close();
+  };
+
+  const handleMinimize = () => {
+    window.tauriApi?.minimize?.();
+  };
+
+  const handleToggleMaximize = () => {
+    window.tauriApi?.toggleMaximize?.();
   };
 
   const [isDocsOpen, setIsDocsOpen] = useState(false);
@@ -154,31 +162,67 @@ export default function Titlebar() {
           </Tooltip>
 
           {!isMac && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={handleClose}
-                  aria-label="Close"
-                  className="h-7 w-12 flex items-center justify-center rounded hover:bg-destructive/50"
-                  // eslint-disable-next-line
-                  style={{ WebkitAppRegion: 'no-drag' } as any}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleMinimize}
+                    aria-label="Minimize"
+                    className="h-7 w-12 flex items-center justify-center rounded hover:bg-muted"
+                    // eslint-disable-next-line
+                    style={{ WebkitAppRegion: 'no-drag' } as any}
                   >
-                    <path d="M6 6l12 12M6 18L18 6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Close</p>
-              </TooltipContent>
-            </Tooltip>
+                    <Minus className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Minimize</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleToggleMaximize}
+                    aria-label="Maximize"
+                    className="h-7 w-12 flex items-center justify-center rounded hover:bg-muted"
+                    // eslint-disable-next-line
+                    style={{ WebkitAppRegion: 'no-drag' } as any}
+                  >
+                    <Square className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Maximize</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleClose}
+                    aria-label="Close"
+                    className="h-7 w-12 flex items-center justify-center rounded hover:bg-destructive/50"
+                    // eslint-disable-next-line
+                    style={{ WebkitAppRegion: 'no-drag' } as any}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path d="M6 6l12 12M6 18L18 6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Close</p>
+                </TooltipContent>
+              </Tooltip>
+            </>
           )}
         </div>
       </div>

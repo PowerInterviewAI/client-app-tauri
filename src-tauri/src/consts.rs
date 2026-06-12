@@ -47,8 +47,8 @@ pub const API_PAYMENT_CREATE: &str = "/api/payment/create";
 pub const API_PAYMENT_STATUS: &str = "/api/payment/status";
 pub const API_PAYMENT_HISTORY: &str = "/api/payment/history";
 
-pub const MIN_WIDTH: u32 = 860;
-pub const MIN_HEIGHT: u32 = 540;
+pub const MIN_WIDTH: u32 = 960;
+pub const MIN_HEIGHT: u32 = 600;
 
 pub const TRANSCRIPT_INTER_TRANSCRIPT_GAP_MS: i64 = 5_000;
 pub const LIVE_SUGGESTION_GAP_MS: i64 = 2_000;

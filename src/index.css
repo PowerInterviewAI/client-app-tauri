@@ -54,7 +54,11 @@
 
 :root {
   /* Light orange color scheme */
-  --background: oklch(0.98 0.01 70);
+  /* `--background-solid` keeps the opaque base color around so stealth mode can paint
+     a single translucent backdrop from it (see the `body.stealth` block below) while
+     every other surface goes fully transparent. */
+  --background-solid: oklch(0.98 0.01 70);
+  --background: var(--background-solid);
   --foreground: oklch(0.25 0.01 60);
   --card: oklch(0.99 0.005 70);
   --card-foreground: oklch(0.25 0.01 60);
@@ -70,7 +74,8 @@
   --accent-foreground: oklch(0.25 0.01 60);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.88 0.015 70);
+  --border-solid: oklch(0.88 0.015 70);
+  --border: var(--border-solid);
   --input: oklch(0.88 0.015 70);
   --ring: oklch(0.72 0.15 60);
   --chart-1: oklch(0.646 0.222 41.116);
@@ -136,7 +141,8 @@
 }
 
 .dark {
-  --background: oklch(0.2 0.015 60);
+  --background-solid: oklch(0.2 0.015 60);
+  --background: var(--background-solid);
   --foreground: oklch(0.95 0.01 70);
   --card: oklch(0.23 0.015 60);
   --card-foreground: oklch(0.95 0.01 70);
@@ -152,7 +158,8 @@
   --accent-foreground: oklch(0.95 0.01 70);
   --destructive: oklch(0.55 0.22 27);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.32 0.02 60);
+  --border-solid: oklch(0.32 0.02 60);
+  --border: var(--border-solid);
   --input: oklch(0.32 0.02 60);
   --ring: oklch(0.72 0.15 60);
   --chart-1: oklch(0.488 0.243 264.376);
@@ -190,6 +197,50 @@
     word-break: break-word;
     hyphens: auto;
   }
+}
+
+/* Stealth overlay ------------------------------------------------------------------
+   The native window is transparent (per-pixel alpha). To avoid opacity accumulating
+   where the nested panels overlap (main > page > cards, each with its own background),
+   we make every background surface fully transparent and paint the translucent backdrop
+   exactly once, on the window-filling <main>. The result is just two opacity levels:
+   fully opaque text/icons over a single, uniform translucent background. The Ctrl/Cmd
+   opacity hotkey adjusts the one background alpha via the bridge (STEALTH_ALPHA_LEVELS). */
+:root {
+  --stealth-bg-alpha: 0.6; /* middle of the 0.3-0.9 range (tauri-bridge.ts) */
+}
+/* Flatten the stacked panel backgrounds (main > page > cards) to transparent so their
+   alphas don't compound, then paint the translucent backdrop exactly once on the
+   window-filling <main>. We override the bg-* *utilities* (not the --background/--card
+   tokens) so token-based foreground uses like `text-background` (e.g. tooltips) stay
+   fully opaque. Result: opaque text/icons over a single, uniform translucent background. */
+body.stealth .bg-background,
+body.stealth .bg-card {
+  background-color: transparent !important;
+}
+body.stealth main.bg-background {
+  background-color: color-mix(
+    in oklab,
+    var(--background-solid) calc(var(--stealth-bg-alpha) * 100%),
+    transparent
+  ) !important;
+}
+/* Borders and images fade together with the background (same alpha) so the whole
+   overlay dims uniformly; only text/icons stay fully opaque for readability. */
+body.stealth {
+  --border: color-mix(
+    in oklab,
+    var(--border-solid) calc(var(--stealth-bg-alpha) * 100%),
+    transparent
+  );
+}
+body.stealth img {
+  opacity: var(--stealth-bg-alpha);
+}
+/* Triggered-suggestion thumbnails are deliberately dimmed in stealth (fixed 0.3,
+   independent of the background level) so they don't distract. */
+body.stealth img.stealth-img-dim {
+  opacity: 0.5;
 }
 
 /* Scrollbar styling (WebKit + Firefox) */

@@ -193,13 +193,13 @@ function LiveSuggestionsPanel({ suggestions = [], style }: SuggestionsPanelProps
                   </div>
 
                   {(s.state === SuggestionState.Loading || s.state === SuggestionState.Success) && (
-                    <div className="text-sm font-semibold text-foreground/90 leading-relaxed whitespace-pre-wrap">
+                    <div className="text-sm font-semibold text-foreground leading-relaxed whitespace-pre-wrap">
                       🪄 {s.answer}
                     </div>
                   )}
 
                   {s.state === SuggestionState.Stopped && (
-                    <div className="text-sm font-semibold text-foreground/90 leading-relaxed whitespace-pre-wrap">
+                    <div className="text-sm font-semibold text-foreground leading-relaxed whitespace-pre-wrap">
                       🪄 {s.answer} ...
                     </div>
                   )}

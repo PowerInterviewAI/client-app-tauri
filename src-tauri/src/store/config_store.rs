@@ -90,6 +90,18 @@ impl ConfigStore {
         self.persist();
     }
 
+    pub fn get_opacity_level(&self) -> Option<usize> {
+        let data = self.data.lock();
+        data.window.as_ref().and_then(|w| w.opacity_level)
+    }
+
+    pub fn save_opacity_level(&self, level: usize) {
+        let mut data = self.data.lock();
+        data.window.get_or_insert_with(WindowConfig::default).opacity_level = Some(level);
+        drop(data);
+        self.persist();
+    }
+
     pub fn get_zoom_factor(&self) -> f64 {
         let data = self.data.lock();
         data.window.as_ref().and_then(|w| w.zoom_factor).unwrap_or(1.0)

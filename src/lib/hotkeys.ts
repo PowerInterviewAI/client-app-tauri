@@ -2,6 +2,7 @@ export enum Hotkey {
   StopAll = 'StopAll',
   ToggleStealth = 'ToggleStealth',
   Opacity = 'Opacity',
+  ToggleHotkeys = 'ToggleHotkeys',
   PlaceWin = 'PlaceWin',
   MoveWin = 'MoveWin',
   ResizeWin = 'ResizeWin',
@@ -27,7 +28,7 @@ export type HotkeyGroup = {
 export const HOTKEY_GROUPS: HotkeyGroup[] = [
   {
     label: 'General',
-    keys: [Hotkey.StopAll, Hotkey.ToggleStealth, Hotkey.Opacity],
+    keys: [Hotkey.StopAll, Hotkey.ToggleStealth, Hotkey.Opacity, Hotkey.ToggleHotkeys],
   },
   {
     label: 'Window Management',
@@ -69,6 +70,11 @@ export const HOTKEYS: Record<Hotkey, HotkeyInfo> = {
     combo: 'Ctrl+Shift+N',
     title: 'Toggle Opacity',
     description: 'Toggle window opacity in stealth mode',
+  },
+  [Hotkey.ToggleHotkeys]: {
+    combo: 'Ctrl+Shift+H',
+    title: 'Show/Hide Hotkeys',
+    description: 'Toggle this keyboard-shortcuts panel',
   },
   [Hotkey.PlaceWin]: {
     combo: 'Ctrl+Shift+1-9',

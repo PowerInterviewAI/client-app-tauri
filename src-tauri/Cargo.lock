@@ -3105,7 +3105,6 @@ dependencies = [
  "objc2-app-kit 0.2.2",
  "os_info",
  "parking_lot",
- "raw-window-handle",
  "reqwest 0.12.28",
  "screencapturekit",
  "serde",

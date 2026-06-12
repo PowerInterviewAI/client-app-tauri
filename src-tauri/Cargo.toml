@@ -13,7 +13,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2.11.0", features = [] }
+tauri = { version = "2.11.0", features = ["macos-private-api"] }
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-shell = "2"
@@ -34,7 +34,6 @@ log = "0.4"
 futures-util = "0.3"
 base64 = "0.22"
 os_info = "3"
-raw-window-handle = "0.6"
 # WebSocket client for streaming loopback PCM to the ASR endpoint. native-tls keeps
 # the TLS backend consistent with reqwest (schannel on Windows, Secure Transport on macOS).
 tokio-tungstenite = { version = "0.24", features = ["native-tls"] }

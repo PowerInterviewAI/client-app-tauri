@@ -1,63 +1,26 @@
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::consts::{MIN_HEIGHT, MIN_WIDTH};
-
-fn set_window_opacity(win: &tauri::WebviewWindow, opacity: f64) {
-    #[cfg(target_os = "windows")]
-    {
-        use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-        extern "system" {
-            fn GetWindowLongW(hwnd: isize, index: i32) -> i32;
-            fn SetWindowLongW(hwnd: isize, index: i32, value: i32) -> i32;
-            fn SetLayeredWindowAttributes(hwnd: isize, key: u32, alpha: u8, flags: u32) -> i32;
-        }
-        const GWL_EXSTYLE: i32 = -20;
-        const WS_EX_LAYERED: i32 = 0x80000;
-        const LWA_ALPHA: u32 = 2;
-        if let Ok(handle) = win.window_handle() {
-            if let RawWindowHandle::Win32(h) = handle.as_raw() {
-                let hwnd = h.hwnd.get() as isize;
-                unsafe {
-                    let ex = GetWindowLongW(hwnd, GWL_EXSTYLE);
-                    SetWindowLongW(hwnd, GWL_EXSTYLE, ex | WS_EX_LAYERED);
-                    SetLayeredWindowAttributes(hwnd, 0, (opacity.clamp(0.0, 1.0) * 255.0) as u8, LWA_ALPHA);
-                }
-            }
-        }
-    }
-    #[cfg(target_os = "macos")]
-    {
-        use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-        if let Ok(handle) = win.window_handle() {
-            if let RawWindowHandle::AppKit(h) = handle.as_raw() {
-                unsafe {
-                    use objc2::msg_send;
-                    use objc2::runtime::AnyObject;
-                    let ns_view = h.ns_view.as_ptr() as *mut AnyObject;
-                    let ns_window: *mut AnyObject = msg_send![ns_view, window];
-                    if !ns_window.is_null() {
-                        let _: () = msg_send![ns_window, setAlphaValue: opacity as f64];
-                    }
-                }
-            }
-        }
-    }
-    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-    { let _ = (win, opacity); }
-}
 use crate::services::app_state::AppStateService;
 use crate::services::push_notification::PushNotificationService;
 use crate::store::ConfigStore;
 
-const OPACITY_LEVELS: [f64; 3] = [0.2, 0.6, 0.9];
+// Number of stealth background-opacity levels the toggle cycles through. The
+// window itself is transparent (per-pixel alpha), so dimming happens in CSS:
+// the actual alpha values live in the frontend (tauri-bridge.ts
+// STEALTH_ALPHA_LEVELS) and are selected by the index emitted below.
+const OPACITY_LEVEL_COUNT: usize = 3;
 const MOVE_AMOUNT: i32 = 20;
 const RESIZE_AMOUNT: i32 = 20;
 
 pub struct WindowControlService {
     stealth: parking_lot::Mutex<bool>,
     opacity_index: parking_lot::Mutex<usize>,
+    // Generation counter for the held move/resize auto-repeat (see bump_repeat/stop_repeat).
+    arrow_repeat: Arc<AtomicU64>,
     app_handle: AppHandle,
     app_state: Arc<AppStateService>,
     push_notification: Arc<PushNotificationService>,
@@ -72,9 +35,15 @@ impl WindowControlService {
         config_store: Arc<ConfigStore>,
     ) -> Self {
         config_store.set_stealth(false); // always start non-stealth
+        // Restore the last-used opacity level (clamped in case the count changed), default mid.
+        let opacity_index = config_store
+            .get_opacity_level()
+            .map(|i| i % OPACITY_LEVEL_COUNT)
+            .unwrap_or(1);
         Self {
             stealth: parking_lot::Mutex::new(false),
-            opacity_index: parking_lot::Mutex::new(1), // default to middle level
+            opacity_index: parking_lot::Mutex::new(opacity_index),
+            arrow_repeat: Arc::new(AtomicU64::new(0)),
             app_handle,
             app_state,
             push_notification,
@@ -90,11 +59,12 @@ impl WindowControlService {
         let Some(win) = self.window() else { return };
         let _ = win.set_ignore_cursor_events(true);
         let _ = win.set_always_on_top(true);
-        let _ = set_window_opacity(&win,0.6);
         *self.stealth.lock() = true;
         self.config_store.set_stealth(true);
         self.app_state.set_stealth(true);
         let _ = self.app_handle.emit("stealth-changed", true);
+        // Apply the current background-opacity level once stealth styling is on.
+        let _ = self.app_handle.emit("stealth-opacity-level", *self.opacity_index.lock());
 
         #[cfg(target_os = "macos")]
         {
@@ -108,7 +78,6 @@ impl WindowControlService {
         let Some(win) = self.window() else { return };
         let _ = win.set_ignore_cursor_events(false);
         let _ = win.set_always_on_top(false);
-        let _ = set_window_opacity(&win,1.0);
         let _ = win.show();
         let _ = win.set_focus();
         *self.stealth.lock() = false;
@@ -136,14 +105,19 @@ impl WindowControlService {
     }
 
     pub fn toggle_opacity(&self) {
-        let Some(win) = self.window() else { return };
         if !*self.stealth.lock() {
             self.push_notification.warning("Opacity toggle is only available in stealth mode.");
             return;
         }
-        let mut idx = self.opacity_index.lock();
-        *idx = (*idx + 1) % OPACITY_LEVELS.len();
-        let _ = set_window_opacity(&win,OPACITY_LEVELS[*idx]);
+        let level = {
+            let mut idx = self.opacity_index.lock();
+            *idx = (*idx + 1) % OPACITY_LEVEL_COUNT;
+            *idx
+        };
+        // Persist so the level is restored on the next launch / next stealth entry.
+        self.config_store.save_opacity_level(level);
+        // The frontend maps this index to background/card alpha values (CSS).
+        let _ = self.app_handle.emit("stealth-opacity-level", level);
     }
 
     pub fn set_stealth(&self, enabled: bool) {
@@ -208,6 +182,26 @@ impl WindowControlService {
             _ => (w, h),
         };
         let _ = win.set_size(tauri::PhysicalSize::new(nw as u32, nh as u32));
+    }
+
+    // ---- Held move/resize auto-repeat ----
+    // Global shortcuts only fire once per physical press (no OS key-repeat), so holding an
+    // arrow wouldn't keep moving/resizing. The hotkey handler calls `bump_repeat()` on press to
+    // start a loop keyed to the returned token, and `stop_repeat()` on release to end it.
+
+    /// Start a new repeat generation; returns its token. A running loop continues only while
+    /// `repeat_token()` still equals its token.
+    pub fn bump_repeat(&self) -> u64 {
+        self.arrow_repeat.fetch_add(1, Ordering::AcqRel) + 1
+    }
+
+    pub fn repeat_token(&self) -> u64 {
+        self.arrow_repeat.load(Ordering::Acquire)
+    }
+
+    /// Invalidate any running repeat loop (on key release).
+    pub fn stop_repeat(&self) {
+        self.arrow_repeat.fetch_add(1, Ordering::AcqRel);
     }
 
     pub fn is_stealth(&self) -> bool {

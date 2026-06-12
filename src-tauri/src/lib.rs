@@ -211,6 +211,8 @@ pub fn run() {
             commands::tools::tools_get_export_data,
             // window
             commands::window_cmd::window_close,
+            commands::window_cmd::window_minimize,
+            commands::window_cmd::window_toggle_maximize,
             commands::window_cmd::zoom_in,
             commands::window_cmd::zoom_out,
             commands::window_cmd::zoom_reset,
@@ -272,6 +274,8 @@ fn register_hotkeys(handle: &AppHandle) {
             Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyM),
             // Opacity toggle: Ctrl+Shift+N
             Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyN),
+            // Toggle hotkeys panel: Ctrl+Shift+H
+            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyH),
             // Zoom: Ctrl+Shift+= / - / 0
             Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Equal),
             Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Minus),
@@ -299,15 +303,36 @@ fn register_hotkeys(handle: &AppHandle) {
             Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Digit7),
             Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Digit8),
             Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Digit9),
+            // Move window: Ctrl+Alt+Shift+Arrow
+            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT), Code::ArrowUp),
+            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT), Code::ArrowDown),
+            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT), Code::ArrowLeft),
+            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT), Code::ArrowRight),
+            // Resize window: Ctrl+Win+Shift+Arrow
+            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SUPER | Modifiers::SHIFT), Code::ArrowUp),
+            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SUPER | Modifiers::SHIFT), Code::ArrowDown),
+            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SUPER | Modifiers::SHIFT), Code::ArrowLeft),
+            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SUPER | Modifiers::SHIFT), Code::ArrowRight),
         ],
         move |app, shortcut, event| {
-            if event.state != ShortcutState::Pressed {
-                return;
-            }
             let services = match app.try_state::<AppServices>() {
                 Some(s) => s,
                 None => return,
             };
+            let is_arrow = matches!(
+                shortcut.key,
+                Code::ArrowUp | Code::ArrowDown | Code::ArrowLeft | Code::ArrowRight
+            );
+            // Releasing a move/resize arrow ends the held auto-repeat.
+            if event.state == ShortcutState::Released {
+                if is_arrow {
+                    services.window_control.stop_repeat();
+                }
+                return;
+            }
+            if event.state != ShortcutState::Pressed {
+                return;
+            }
             match shortcut.key {
                 Code::KeyQ => {
                     let _ = app.emit("hotkey-stop-assistant", ());
@@ -317,6 +342,9 @@ fn register_hotkeys(handle: &AppHandle) {
                 }
                 Code::KeyN => {
                     services.window_control.toggle_opacity();
+                }
+                Code::KeyH => {
+                    let _ = app.emit("hotkey-toggle-hotkeys", ());
                 }
                 Code::Equal => {
                     services.zoom.adjust(crate::consts::ZOOM_STEP);
@@ -413,6 +441,45 @@ fn register_hotkeys(handle: &AppHandle) {
                 }
                 Code::Digit9 => {
                     services.window_control.move_to_position("top-right");
+                }
+                Code::ArrowUp | Code::ArrowDown | Code::ArrowLeft | Code::ArrowRight => {
+                    let dir = match shortcut.key {
+                        Code::ArrowUp => "up",
+                        Code::ArrowDown => "down",
+                        Code::ArrowLeft => "left",
+                        _ => "right",
+                    };
+                    // Move uses Alt, resize uses the Super (Win/Cmd) modifier.
+                    let resize = shortcut.mods.contains(Modifiers::SUPER);
+                    let is_move = shortcut.mods.contains(Modifiers::ALT);
+                    if !resize && !is_move {
+                        return;
+                    }
+                    let wc = Arc::clone(&services.window_control);
+                    // Act once immediately, then auto-repeat while the key stays held
+                    // (global shortcuts don't emit OS key-repeat, so we drive it ourselves).
+                    if resize {
+                        wc.resize_by_arrow(dir);
+                    } else {
+                        wc.move_by_arrow(dir);
+                    }
+                    let token = wc.bump_repeat();
+                    let dir = dir.to_string();
+                    tauri::async_runtime::spawn(async move {
+                        // Initial hold delay before repeating, then a steady cadence. Bounded so a
+                        // missed key-release event can never make the window run away forever.
+                        tokio::time::sleep(std::time::Duration::from_millis(350)).await;
+                        let mut iterations = 0;
+                        while wc.repeat_token() == token && iterations < 600 {
+                            if resize {
+                                wc.resize_by_arrow(&dir);
+                            } else {
+                                wc.move_by_arrow(&dir);
+                            }
+                            iterations += 1;
+                            tokio::time::sleep(std::time::Duration::from_millis(55)).await;
+                        }
+                    });
                 }
                 _ => {}
             }

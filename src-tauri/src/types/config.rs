@@ -81,6 +81,7 @@ pub struct WindowConfig {
     pub bounds: Option<WindowBounds>,
     pub stealth: Option<bool>,
     pub zoom_factor: Option<f64>,
+    pub opacity_level: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

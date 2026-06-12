@@ -16,15 +16,17 @@
         "title": "Power Interview AI",
         "width": 1024,
         "height": 640,
-        "minWidth": 760,
-        "minHeight": 480,
+        "minWidth": 860,
+        "minHeight": 540,
         "decorations": false,
         "shadow": true,
         "center": true
       }
     ],
     "security": {
-      "capabilities": ["default"]
+      "capabilities": [
+        "default"
+      ]
     }
   },
   "bundle": {

@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Hotkey, HOTKEY_GROUPS, HOTKEYS } from '@/lib/hotkeys';
+import { Hotkey, HOTKEY_GROUPS, HOTKEYS, formatCombo } from '@/lib/hotkeys';
 import { cn } from '@/lib/utils';
 
 import ExternalLink from './external-link';
@@ -80,7 +80,7 @@ export default function DocumentationDialog({ open, onOpenChange }: Documentatio
                                 : 'bg-muted'
                           )}
                         >
-                          {info.combo}
+                          {formatCombo(info.combo)}
                         </div>
                       </div>
                       <div className="col-span-2 text-sm">{info.description}</div>

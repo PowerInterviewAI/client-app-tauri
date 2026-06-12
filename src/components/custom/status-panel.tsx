@@ -2,7 +2,7 @@ import { Keyboard } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import CreditsDisplay from '@/components/custom/credits-display';
-import { Hotkey, HOTKEY_GROUPS, HOTKEYS } from '@/lib/hotkeys';
+import { Hotkey, HOTKEY_GROUPS, HOTKEYS, formatCombo } from '@/lib/hotkeys';
 import { cn } from '@/lib/utils';
 import { RunningState } from '@/types/app-state';
 
@@ -34,9 +34,9 @@ export default function StatusPanel({ runningState, llmModel, credits }: Props) 
         onClick={() => setShowHotkeys((v) => !v)}
         className="h-6 flex items-center justify-center rounded border border-border/50 text-muted-foreground bg-muted/50 text-xs font-bold gap-1 px-2"
         aria-label="Hotkeys"
-        title="Show keyboard shortcuts (Ctrl+Shift+H)"
+        title={`Show keyboard shortcuts (${formatCombo('Ctrl+Shift+H')})`}
       >
-        <Keyboard className="h-4 w-4" /> Show Hotkeys (Ctrl+Shift+H)
+        <Keyboard className="h-4 w-4" /> Show Hotkeys ({formatCombo('Ctrl+Shift+H')})
       </button>
 
       {showHotkeys && (
@@ -47,7 +47,9 @@ export default function StatusPanel({ runningState, llmModel, credits }: Props) 
               <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <Keyboard className="h-4 w-4" /> Keyboard Shortcuts
               </h3>
-              <span className="text-[10px] text-muted-foreground">Ctrl+Shift+H to close</span>
+              <span className="text-[10px] text-muted-foreground">
+                {formatCombo('Ctrl+Shift+H')} to close
+              </span>
             </div>
             <div className="space-y-3">
               {HOTKEY_GROUPS.map((group) => (
@@ -70,7 +72,7 @@ export default function StatusPanel({ runningState, llmModel, credits }: Props) 
                                   : 'bg-muted text-foreground'
                             )}
                           >
-                            {info.combo}
+                            {formatCombo(info.combo)}
                           </div>
                           <div className="text-[11px] font-medium text-foreground">
                             {info.title}

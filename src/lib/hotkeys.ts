@@ -128,3 +128,29 @@ export const HOTKEYS: Record<Hotkey, HotkeyInfo> = {
       'Generate suggestion referencing screen captures. If no captures exist, attempts to take one before generating.',
   },
 };
+
+/**
+ * Format a combo string for the current platform. On macOS we prefer
+ * Command/Option labels instead of Ctrl/Alt for displayed hotkey labels.
+ */
+export function formatCombo(combo: string): string {
+  try {
+    const nav =
+      typeof navigator !== 'undefined'
+        ? (navigator as Navigator & { userAgent?: string; platform?: string })
+        : undefined;
+    const isMac = !!(
+      nav &&
+      (/(Mac|iPhone|iPad|iPod)/.test(nav.platform || '') ||
+        /Macintosh|Mac OS X/.test(nav.userAgent || ''))
+    );
+    if (!isMac) return combo;
+    return combo
+      .replace(/\bCtrl\b/g, '⌘')
+      .replace(/\bAlt\b/g, '⌥')
+      .replace(/\bShift\b/g, '⇧')
+      .replace(/\bWin\b/g, '⌃');
+  } catch (e) {
+    return combo;
+  }
+}

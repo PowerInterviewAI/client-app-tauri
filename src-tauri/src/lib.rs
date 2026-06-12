@@ -208,7 +208,7 @@ pub fn run() {
             // tools
             commands::tools::tools_clear_all,
             commands::tools::tools_set_placeholder_data,
-            commands::tools::tools_get_transcripts_for_export,
+            commands::tools::tools_get_export_data,
             // window
             commands::window_cmd::window_close,
             commands::window_cmd::zoom_in,

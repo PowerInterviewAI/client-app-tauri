@@ -293,10 +293,12 @@ payment-status tabs.
 
 `ToolsService` (`src-tauri/src/services/tools.rs`) and the `tools` bridge namespace:
 
-- **Export transcript**: `tools_get_transcripts_for_export` returns the transcript list; the
-  renderer converts it to Markdown (`**You:**` / `**Interviewer:**` per entry), renders it to a
-  `.docx` via `@mohtasham/md-to-docx`, and writes it via the Tauri dialog/fs plugins
-  (`save` + `writeFile`).
+- **Export transcript** ("smart" report): `tools_get_export_data` requests an LLM summary from
+  the backend (`/api/llm/summarize`) and returns it together with the current transcripts and
+  live suggestions (`ExportData`). The renderer assembles a Markdown report (summary with a
+  Date/Time line, a `# Transcripts` section, and a `# Suggestions` section), renders it to a
+  `.docx` via `@mohtasham/md-to-docx` (centered H1/H5), and writes it via the Tauri dialog/fs
+  plugins (`save` + `writeFile`) as `report-<timestamp>.docx`.
 - **Clear all**: empties `transcripts`, `liveSuggestions`, and `actionSuggestions` in `AppState`
   (used at the start of each assistant run and from the UI).
 - **Set placeholder data**: populates `AppState` with sample transcript/suggestion entries (used

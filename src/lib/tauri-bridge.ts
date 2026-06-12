@@ -151,21 +151,25 @@ export const tauriApi = {
   // ---- Tools ----
   tools: {
     exportTranscript: async () => {
-      // Fetch transcripts from Rust, generate DOCX in JS (keeps md-to-docx dependency)
-      const transcripts = await invoke<unknown[]>('tools_get_transcripts_for_export');
-      if (transcripts.length === 0) {
-        throw new Error('No transcript to export yet');
-      }
-      const markdown = transcriptsToMarkdown(transcripts as TranscriptItem[]);
+      // Rust gathers the data and the LLM-generated summary; JS assembles the
+      // Markdown and renders the DOCX (keeps the md-to-docx dependency on the frontend).
+      const data = await invoke<ExportData>('tools_get_export_data');
+      const markdown = buildExportMarkdown(data);
       try {
         ensureProcessPolyfill();
         const { convertMarkdownToDocx } = await import('@mohtasham/md-to-docx');
-        const blob: Blob = await convertMarkdownToDocx(markdown);
+        const blob: Blob = await convertMarkdownToDocx(markdown, {
+          documentType: 'document',
+          style: {
+            heading1Alignment: 'CENTER',
+            heading5Alignment: 'CENTER',
+          },
+        });
         const arrayBuffer = await blob.arrayBuffer();
         const bytes = new Uint8Array(arrayBuffer);
         const filePath = await save({
           filters: [{ name: 'Word Document', extensions: ['docx'] }],
-          defaultPath: `interview-transcript-${Date.now()}.docx`,
+          defaultPath: generateExportFilename(),
         });
         if (filePath) {
           await writeFile(filePath, bytes);
@@ -251,10 +255,64 @@ interface TranscriptItem {
   endTimestamp: number;
 }
 
-function transcriptsToMarkdown(transcripts: TranscriptItem[]): string {
-  const lines = transcripts.map((t) => {
-    const speaker = t.speaker === 'other' ? 'Interviewer' : 'You';
-    return `**${speaker}:** ${t.text}`;
+interface LiveSuggestionItem {
+  timestamp: number;
+  last_question: string;
+  answer: string;
+}
+
+// Mirrors the Rust `ExportData` struct returned by `tools_get_export_data`.
+interface ExportData {
+  username: string;
+  summary: string;
+  transcripts: TranscriptItem[];
+  liveSuggestions: LiveSuggestionItem[];
+}
+
+// Builds the "smart" export document: an LLM summary (with a Date/Time line),
+// followed by the full transcript and the suggestions, matching the original
+// power-interview-client report layout.
+function buildExportMarkdown(data: ExportData): string {
+  const username = data.username || 'You';
+
+  // Summary section: insert a Date/Time line right after the summary's first line.
+  let summaryPart = data.summary ?? '';
+  if (summaryPart) {
+    const lines = summaryPart.split('\n');
+    const datetimeNow = new Date().toLocaleString();
+    lines.splice(1, 0, `\n##### Date/Time: ${datetimeNow}`);
+    summaryPart = lines.join('\n');
+  }
+
+  // Transcripts section.
+  const transcriptLines = data.transcripts.map((t) => {
+    const timeStr = new Date(t.timestamp).toLocaleString();
+    const speakerName = t.speaker === 'other' ? 'Interviewer' : username;
+    return `#### ***${timeStr} | ${speakerName}***\n${t.text}\n`;
   });
-  return lines.join('\n\n');
+  const transcriptsPart = `# **Transcripts**\n\n${transcriptLines.join('\n')}`;
+
+  // Suggestions section (paired question + suggested answer).
+  const suggestionLines = data.liveSuggestions.map((s) => {
+    const timeStr = new Date(s.timestamp).toLocaleString();
+    return `#### ***${timeStr} | Interviewer***\n${s.last_question}\n\n#### ***Suggestion***\n${s.answer}\n`;
+  });
+  const suggestionsPart = `# **Suggestions**\n\n${suggestionLines.join('\n')}`;
+
+  return [
+    summaryPart,
+    data.transcripts.length > 0 ? transcriptsPart : '',
+    data.liveSuggestions.length > 0 ? suggestionsPart : '',
+  ]
+    .join('\n\n')
+    .trim();
+}
+
+// Timestamped report filename, e.g. "report-2026-06-12_01-04-01.docx".
+function generateExportFilename(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const time = `${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
+  return `report-${date}_${time}.docx`;
 }

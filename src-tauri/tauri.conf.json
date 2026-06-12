@@ -59,7 +59,7 @@
         "type": "embedBootstrapper"
       },
       "nsis": {
-        "installMode": "perUser"
+        "installMode": "currentUser"
       }
     }
   },

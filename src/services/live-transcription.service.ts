@@ -69,10 +69,16 @@ class AudioWsStream {
     this.stopping = false;
     await this.connectWithRetry();
 
-    // Force a 16 kHz context so the browser performs high-quality resampling of the
+    // Prefer a 16 kHz context so the browser performs high-quality resampling of the
     // 48 kHz capture; convertTo16kPcm then becomes a passthrough instead of a crude
-    // nearest-neighbour decimation that aliases and hurts STT accuracy.
-    this.ctx = new AudioContext({ sampleRate: SAMPLE_RATE });
+    // nearest-neighbour decimation that aliases and hurts STT accuracy. Some WKWebView
+    // versions on macOS reject a non-hardware sample rate and throw, so fall back to a
+    // default-rate context, where convertTo16kPcm resamples instead.
+    try {
+      this.ctx = new AudioContext({ sampleRate: SAMPLE_RATE });
+    } catch {
+      this.ctx = new AudioContext();
+    }
     this.source = this.ctx.createMediaStreamSource(this.stream);
 
     // 1. Load the AudioWorklet (required once per AudioContext)
@@ -296,7 +302,16 @@ class LiveTranscriptionService {
         await tauri.transcription.enableLoopbackAudio();
       } catch (err) {
         if (isMacOS) {
-          await tauri.permissions.showDeniedDialog('screen-recording');
+          // Loopback uses ScreenCaptureKit, which needs Screen Recording permission.
+          // If the permission already reads as granted, capture failed because macOS
+          // requires the app to restart after the grant before SCK can attach, so guide
+          // the user to restart. Otherwise it is a genuine denial: send them to Settings.
+          const status = await tauri.permissions.checkScreenRecording();
+          if (status === 'granted') {
+            await tauri.permissions.showRestartDialog();
+          } else {
+            await tauri.permissions.showDeniedDialog('screen-recording');
+          }
           throw Object.assign(new Error(), { name: 'PermissionError' });
         }
         throw err;

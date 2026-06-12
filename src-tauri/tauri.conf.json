@@ -46,7 +46,7 @@
     "copyright": "Copyright ©2026 VectorLeap Pulse Innovation LTD",
     "macOS": {
       "infoPlist": "Info.plist",
-      "entitlements": "../build/entitlements.mac.plist",
+      "entitlements": "entitlements.mac.plist",
       "signingIdentity": null
     },
     "windows": {

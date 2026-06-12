@@ -216,7 +216,9 @@ export const tauriApi = {
         (r) => (r as { status?: string })?.status ?? 'unknown'
       ),
     checkScreenSources: () =>
-      invoke('permissions_check_screen_sources').then((r) => !!(r as { granted?: boolean })?.granted),
+      invoke('permissions_check_screen_sources').then(
+        (r) => !!(r as { granted?: boolean })?.granted
+      ),
     checkMicrophone: () =>
       invoke('permissions_check_microphone').then(
         (r) => (r as { status?: string })?.status ?? 'unknown'

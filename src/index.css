@@ -243,6 +243,17 @@ body.stealth img.stealth-img-dim {
   opacity: 0.5;
 }
 
+/* Font opacity in stealth mode ----------------------------------------------------
+   Reduce text/icon opacity when stealth overlay is active. This applies a single
+   translucent color mix over the existing `--foreground` token so text remains
+   readable but dimmed uniformly. */
+body.stealth {
+  --font-opacity: 0.7;
+}
+body.stealth * {
+  color: color-mix(in oklab, var(--foreground) calc(var(--font-opacity) * 100%), transparent) !important;
+}
+
 /* Scrollbar styling (WebKit + Firefox) */
 *::-webkit-scrollbar {
   width: 10px;

@@ -32,7 +32,7 @@ export default function StatusPanel({ runningState, llmModel, credits }: Props) 
       <div className="flex-1" />
       <button
         onClick={() => setShowHotkeys((v) => !v)}
-        className="h-6 flex items-center justify-center rounded border border-border/30 text-muted-foreground bg-muted/30 text-xs font-medium gap-1 px-2"
+        className="h-6 flex items-center justify-center rounded border border-border/50 text-muted-foreground bg-muted/50 text-xs font-bold gap-1 px-2"
         aria-label="Hotkeys"
         title="Show keyboard shortcuts (Ctrl+Shift+H)"
       >

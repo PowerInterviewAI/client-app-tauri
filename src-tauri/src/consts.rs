@@ -5,6 +5,27 @@ pub const BACKEND_BASE_URL: &str = if cfg!(debug_assertions) {
     "https://api.powerinterviewai.com"
 };
 
+// User-Agent sent with every backend request, including app version, OS, OS version
+// and CPU arch. Examples:
+//   Windows: "power-interview-ai/2.0.0 (Windows 10.0.26200; x86_64)"
+//   macOS:   "power-interview-ai/2.0.0 (Mac OS 15.1.0; aarch64)"
+// Computed once at first use since the OS info requires a runtime lookup.
+pub fn app_user_agent() -> &'static str {
+    use std::sync::OnceLock;
+    static UA: OnceLock<String> = OnceLock::new();
+    UA.get_or_init(|| {
+        let info = os_info::get();
+        format!(
+            "{}/{} ({} {}; {})",
+            env!("CARGO_PKG_NAME"),
+            env!("CARGO_PKG_VERSION"),
+            info.os_type(),
+            info.version(),
+            std::env::consts::ARCH,
+        )
+    })
+}
+
 // API endpoints
 pub const API_AUTH_SIGNUP: &str = "/api/auth/signup";
 pub const API_AUTH_LOGIN: &str = "/api/auth/login";

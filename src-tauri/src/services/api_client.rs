@@ -2,7 +2,7 @@ use reqwest::{Client, Response};
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::consts::BACKEND_BASE_URL;
+use crate::consts::{app_user_agent, BACKEND_BASE_URL};
 
 pub type ApiError = String;
 
@@ -15,8 +15,12 @@ pub struct ApiClient {
 
 impl ApiClient {
     pub fn new() -> Self {
+        let client = Client::builder()
+            .user_agent(app_user_agent())
+            .build()
+            .unwrap_or_else(|_| Client::new());
         Self {
-            client: Client::new(),
+            client,
             base_url: BACKEND_BASE_URL.to_string(),
             token: None,
         }

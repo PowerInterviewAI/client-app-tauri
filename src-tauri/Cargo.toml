@@ -33,6 +33,7 @@ anyhow = "1"
 log = "0.4"
 futures-util = "0.3"
 base64 = "0.22"
+os_info = "3"
 raw-window-handle = "0.6"
 # WebSocket client for streaming loopback PCM to the ASR endpoint. native-tls keeps
 # the TLS backend consistent with reqwest (schannel on Windows, Secure Transport on macOS).

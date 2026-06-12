@@ -46,7 +46,7 @@ const notes = template
   .replaceAll('{{TAG}}', TAG)
   .replaceAll('{{VERSION}}', VERSION)
   .replaceAll('{{CHANGES}}', changes)
-  .replaceAll('{{REPO}}', GITHUB_REPOSITORY ?? 'PowerInterviewAI/client-app')
+  .replaceAll('{{REPO}}', GITHUB_REPOSITORY ?? 'PowerInterviewAI/client-app-tauri')
   .replaceAll('{{WIN_ASSET}}', winAsset)
   .replaceAll('{{MAC_ASSET}}', macAsset);
 

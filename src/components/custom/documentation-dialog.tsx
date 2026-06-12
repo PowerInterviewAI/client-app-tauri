@@ -70,16 +70,7 @@ export default function DocumentationDialog({ open, onOpenChange }: Documentatio
                   return (
                     <React.Fragment key={hk}>
                       <div className="col-span-1">
-                        <div
-                          className={cn(
-                            'px-2 py-1 rounded text-[11px] font-semibold min-w-22.5',
-                            hk === Hotkey.StopAll
-                              ? 'bg-destructive/80 text-primary-foreground'
-                              : hk === Hotkey.ToggleStealth
-                                ? 'bg-primary/80 text-primary-foreground'
-                                : 'bg-muted'
-                          )}
-                        >
+                        <div className="px-2 py-1 rounded text-[11px] font-medium min-w-22.5 bg-muted">
                           {formatCombo(info.combo)}
                         </div>
                       </div>

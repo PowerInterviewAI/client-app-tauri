@@ -77,17 +77,17 @@ export const HOTKEYS: Record<Hotkey, HotkeyInfo> = {
     description: 'Toggle this keyboard-shortcuts panel',
   },
   [Hotkey.PlaceWin]: {
-    combo: 'Ctrl+Shift+1-9',
+    combo: 'Ctrl+Shift+[1-9]',
     title: 'Place Window',
     description: 'Place window in a specific corner, side, or center',
   },
   [Hotkey.MoveWin]: {
-    combo: 'Ctrl+Alt+Shift+Arrow',
+    combo: 'Ctrl+Shift+Alt+Arrow',
     title: 'Move Window',
     description: 'Move window in the specified direction',
   },
   [Hotkey.ResizeWin]: {
-    combo: 'Ctrl+Win+Shift+Arrow',
+    combo: 'Ctrl+Shift+Win+Arrow',
     title: 'Resize Window',
     description: 'Resize window in the specified direction',
   },
@@ -152,7 +152,8 @@ export function formatCombo(combo: string): string {
       .replace(/\bCtrl\b/g, '⌃')
       .replace(/\bAlt\b/g, '⌥')
       .replace(/\bShift\b/g, '⇧')
-      .replace(/\bWin\b/g, '⌘');
+      .replace(/\bWin\b/g, '⌘')
+      .replace(/\+/g, ' ');
   } catch (e) {
     return combo;
   }

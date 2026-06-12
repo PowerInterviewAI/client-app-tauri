@@ -62,16 +62,7 @@ export default function StatusPanel({ runningState, llmModel, credits }: Props) 
                       const info = HOTKEYS[hk];
                       return (
                         <div key={hk} className="flex items-center gap-1">
-                          <div
-                            className={cn(
-                              'rounded px-1 py-0.5 text-[11px] font-semibold',
-                              hk === Hotkey.StopAll
-                                ? 'bg-destructive text-destructive-foreground'
-                                : hk === Hotkey.ToggleStealth
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'bg-muted text-foreground'
-                            )}
-                          >
+                          <div className="rounded px-1.5 py-0.5 text-[11px] font-medium bg-muted text-foreground">
                             {formatCombo(info.combo)}
                           </div>
                           <div className="text-[11px] font-medium text-foreground">

@@ -114,7 +114,12 @@ declare global {
 
     // Tools management
     tools: {
-      exportTranscript: () => Promise<string>;
+      /** Exports the interview report. Resolves to the saved file path, or null if the user cancelled the save dialog. */
+      exportTranscript: () => Promise<string | null>;
+      /** Opens a file with the OS default application. */
+      openPath: (path: string) => Promise<void>;
+      /** Reveals a file in its containing folder, highlighting it in the OS file browser. */
+      revealPath: (path: string) => Promise<void>;
       clearAll: () => Promise<void>;
       setPlaceholderData: () => Promise<void>;
     };

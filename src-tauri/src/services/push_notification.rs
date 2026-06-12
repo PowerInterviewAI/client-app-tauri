@@ -17,16 +17,25 @@ impl PushNotificationService {
 
     pub fn error(&self, message: impl Into<String>) {
         use crate::types::push_notification::NotificationType;
-        self.push(PushNotification { message: message.into(), notification_type: NotificationType::Error });
+        self.push(PushNotification {
+            message: message.into(),
+            notification_type: NotificationType::Error,
+        });
     }
 
     pub fn warning(&self, message: impl Into<String>) {
         use crate::types::push_notification::NotificationType;
-        self.push(PushNotification { message: message.into(), notification_type: NotificationType::Warning });
+        self.push(PushNotification {
+            message: message.into(),
+            notification_type: NotificationType::Warning,
+        });
     }
 
     pub fn success(&self, message: impl Into<String>) {
         use crate::types::push_notification::NotificationType;
-        self.push(PushNotification { message: message.into(), notification_type: NotificationType::Success });
+        self.push(PushNotification {
+            message: message.into(),
+            notification_type: NotificationType::Success,
+        });
     }
 }

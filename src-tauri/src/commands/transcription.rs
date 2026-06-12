@@ -45,7 +45,11 @@ pub async fn transcription_ingest(
 /// the same way the backend's `get_session_ws` dependency expects: a `session_token`
 /// cookie, not a query parameter.
 #[tauri::command]
-pub fn transcription_set_session_token(token: String, app: AppHandle, services: State<'_, AppServices>) {
+pub fn transcription_set_session_token(
+    token: String,
+    app: AppHandle,
+    services: State<'_, AppServices>,
+) {
     services
         .config_store
         .update_config(serde_json::json!({ "sessionToken": token }));
@@ -68,7 +72,11 @@ pub fn transcription_set_session_token(token: String, app: AppHandle, services: 
         .path("/")
         .secure(secure)
         .http_only(false)
-        .same_site(if secure { SameSite::None } else { SameSite::Lax })
+        .same_site(if secure {
+            SameSite::None
+        } else {
+            SameSite::Lax
+        })
         .build();
     let _ = window.set_cookie(cookie);
 }

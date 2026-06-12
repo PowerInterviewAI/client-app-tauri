@@ -12,13 +12,29 @@ export default function useTools() {
       if (!tauri) {
         throw new Error('Tauri API not available');
       }
-      await tauri.tools.exportTranscript();
+      return await tauri.tools.exportTranscript();
     } catch (error) {
       console.error('Failed to export transcript:', error);
       throw error;
     } finally {
       setExporting(false);
     }
+  };
+
+  const openPath = async (path: string) => {
+    const tauri = getTauriApi();
+    if (!tauri) {
+      throw new Error('Tauri API not available');
+    }
+    await tauri.tools.openPath(path);
+  };
+
+  const revealPath = async (path: string) => {
+    const tauri = getTauriApi();
+    if (!tauri) {
+      throw new Error('Tauri API not available');
+    }
+    await tauri.tools.revealPath(path);
   };
 
   const clearAll = async () => {
@@ -40,6 +56,8 @@ export default function useTools() {
   return {
     exporting,
     exportTranscript,
+    openPath,
+    revealPath,
     clearAll,
     setPlaceholderData,
   } as const;

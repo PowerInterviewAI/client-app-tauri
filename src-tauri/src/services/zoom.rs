@@ -10,7 +10,10 @@ pub struct ZoomService {
 
 impl ZoomService {
     pub fn new(app_handle: AppHandle, config_store: std::sync::Arc<ConfigStore>) -> Self {
-        Self { app_handle, config_store }
+        Self {
+            app_handle,
+            config_store,
+        }
     }
 
     fn window(&self) -> Option<tauri::WebviewWindow> {

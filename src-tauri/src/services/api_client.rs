@@ -28,7 +28,9 @@ impl ApiClient {
 
     pub fn with_token(mut self, token: impl Into<String>) -> Self {
         let t = token.into();
-        if !t.is_empty() { self.token = Some(t); }
+        if !t.is_empty() {
+            self.token = Some(t);
+        }
         self
     }
 
@@ -45,7 +47,9 @@ impl ApiClient {
     pub async fn get(&self, path: &str) -> Result<Value, String> {
         let url = self.url(path);
         let mut req = self.client.get(&url);
-        if let Some(auth) = self.auth() { req = req.header("Authorization", auth); }
+        if let Some(auth) = self.auth() {
+            req = req.header("Authorization", auth);
+        }
         let resp = req.send().await.map_err(|e| e.to_string())?;
         parse_json_response(resp).await
     }
@@ -53,7 +57,9 @@ impl ApiClient {
     pub async fn post(&self, path: &str, body: &impl Serialize) -> Result<Value, String> {
         let url = self.url(path);
         let mut req = self.client.post(&url).json(body);
-        if let Some(auth) = self.auth() { req = req.header("Authorization", auth); }
+        if let Some(auth) = self.auth() {
+            req = req.header("Authorization", auth);
+        }
         let resp = req.send().await.map_err(|e| e.to_string())?;
         parse_json_response(resp).await
     }
@@ -61,7 +67,9 @@ impl ApiClient {
     pub async fn post_stream(&self, path: &str, body: &impl Serialize) -> Result<Response, String> {
         let url = self.url(path);
         let mut req = self.client.post(&url).json(body);
-        if let Some(auth) = self.auth() { req = req.header("Authorization", auth); }
+        if let Some(auth) = self.auth() {
+            req = req.header("Authorization", auth);
+        }
         let resp = req.send().await.map_err(|e| e.to_string())?;
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
@@ -71,10 +79,16 @@ impl ApiClient {
         Ok(resp)
     }
 
-    pub async fn post_multipart(&self, path: &str, form: reqwest::multipart::Form) -> Result<Value, String> {
+    pub async fn post_multipart(
+        &self,
+        path: &str,
+        form: reqwest::multipart::Form,
+    ) -> Result<Value, String> {
         let url = self.url(path);
         let mut req = self.client.post(&url).multipart(form);
-        if let Some(auth) = self.auth() { req = req.header("Authorization", auth); }
+        if let Some(auth) = self.auth() {
+            req = req.header("Authorization", auth);
+        }
         let resp = req.send().await.map_err(|e| e.to_string())?;
         parse_json_response(resp).await
     }
@@ -86,7 +100,10 @@ async fn parse_json_response(resp: Response) -> Result<Value, String> {
     } else {
         let status = resp.status().as_u16();
         let body: Value = resp.json().await.unwrap_or_default();
-        let msg = body["detail"]["message"].as_str().unwrap_or("HTTP error").to_string();
+        let msg = body["detail"]["message"]
+            .as_str()
+            .unwrap_or("HTTP error")
+            .to_string();
         Err(format!("HTTP {} - {}", status, msg))
     }
 }

@@ -1,8 +1,8 @@
 use serde_json::Value;
 use tauri::State;
 
-use crate::AppServices;
 use crate::services::auth::AuthService;
+use crate::AppServices;
 
 #[tauri::command]
 pub async fn auth_signup(

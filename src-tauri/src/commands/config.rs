@@ -1,8 +1,8 @@
 use serde_json::Value;
 use tauri::State;
 
-use crate::AppServices;
 use crate::types::config::RuntimeConfig;
+use crate::AppServices;
 
 #[tauri::command]
 pub fn config_get(services: State<'_, AppServices>) -> RuntimeConfig {

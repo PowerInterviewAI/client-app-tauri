@@ -40,6 +40,7 @@ pub struct AppServices {
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
@@ -209,6 +210,8 @@ pub fn run() {
             commands::tools::tools_clear_all,
             commands::tools::tools_set_placeholder_data,
             commands::tools::tools_get_export_data,
+            commands::tools::tools_open_path,
+            commands::tools::tools_reveal_path,
             // window
             commands::window_cmd::window_close,
             commands::window_cmd::window_minimize,

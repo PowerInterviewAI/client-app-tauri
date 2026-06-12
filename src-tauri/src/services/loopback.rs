@@ -74,7 +74,11 @@ impl LoopbackService {
             run_streamer(rx, source_rate, token, transcript, stop_for_stream).await;
         });
 
-        *guard = Some(RunningLoopback { stop, capture, streamer });
+        *guard = Some(RunningLoopback {
+            stop,
+            capture,
+            streamer,
+        });
         Ok(())
     }
 
@@ -148,7 +152,9 @@ async fn connect_and_stream(
         let cookie = format!("session_token={token}");
         request.headers_mut().insert(
             "Cookie",
-            cookie.parse().map_err(|e: tokio_tungstenite::tungstenite::http::header::InvalidHeaderValue| e.to_string())?,
+            cookie.parse().map_err(
+                |e: tokio_tungstenite::tungstenite::http::header::InvalidHeaderValue| e.to_string(),
+            )?,
         );
     }
     let (ws, _response) = tokio_tungstenite::connect_async(request)
@@ -317,7 +323,12 @@ mod capture {
         let (setup_tx, setup_rx) = std::sync::mpsc::channel::<Result<u32, String>>();
         let thread = std::thread::spawn(move || run_capture(tx, stop, setup_tx));
         match setup_rx.recv() {
-            Ok(Ok(rate)) => Ok((rate, CaptureHandle { thread: Some(thread) })),
+            Ok(Ok(rate)) => Ok((
+                rate,
+                CaptureHandle {
+                    thread: Some(thread),
+                },
+            )),
             Ok(Err(e)) => {
                 let _ = thread.join();
                 Err(e)
@@ -509,7 +520,12 @@ mod capture {
         let (setup_tx, setup_rx) = std::sync::mpsc::channel::<Result<u32, String>>();
         let thread = std::thread::spawn(move || run_capture(tx, stop, setup_tx));
         match setup_rx.recv() {
-            Ok(Ok(rate)) => Ok((rate, CaptureHandle { thread: Some(thread) })),
+            Ok(Ok(rate)) => Ok((
+                rate,
+                CaptureHandle {
+                    thread: Some(thread),
+                },
+            )),
             Ok(Err(e)) => {
                 let _ = thread.join();
                 Err(e)

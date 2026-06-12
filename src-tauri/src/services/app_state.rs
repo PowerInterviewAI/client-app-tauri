@@ -1,7 +1,9 @@
 use parking_lot::Mutex;
 use tauri::{AppHandle, Emitter};
 
-use crate::types::app_state::{ActionSuggestion, AppState, LiveSuggestion, RunningState, Transcript, UserRole};
+use crate::types::app_state::{
+    ActionSuggestion, AppState, LiveSuggestion, RunningState, Transcript, UserRole,
+};
 
 pub struct AppStateService {
     state: Mutex<AppState>,
@@ -25,7 +27,9 @@ impl AppStateService {
     }
 
     pub fn update<F>(&self, f: F)
-    where F: FnOnce(&mut AppState) {
+    where
+        F: FnOnce(&mut AppState),
+    {
         let mut guard = self.state.lock();
         f(&mut guard);
         let snapshot = guard.clone();

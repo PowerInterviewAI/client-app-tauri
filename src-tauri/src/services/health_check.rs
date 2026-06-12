@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 use serde::Deserialize;
 
@@ -36,14 +36,12 @@ pub struct HealthCheckService {
 
 impl HealthCheckService {
     pub fn new() -> Self {
-        Self { running: Arc::new(AtomicBool::new(false)) }
+        Self {
+            running: Arc::new(AtomicBool::new(false)),
+        }
     }
 
-    pub async fn start(
-        &self,
-        app_state: Arc<AppStateService>,
-        config_store: Arc<ConfigStore>,
-    ) {
+    pub async fn start(&self, app_state: Arc<AppStateService>, config_store: Arc<ConfigStore>) {
         if self.running.swap(true, Ordering::AcqRel) {
             return;
         }
@@ -55,7 +53,10 @@ impl HealthCheckService {
             let client = ApiClient::new().with_token(&token);
             let is_assistant_running = app_state.get_state().running_state == RunningState::Running;
             match client
-                .post(API_HEALTH_CHECK_PING_CLIENT, &serde_json::json!({ "is_assistant_running": is_assistant_running }))
+                .post(
+                    API_HEALTH_CHECK_PING_CLIENT,
+                    &serde_json::json!({ "is_assistant_running": is_assistant_running }),
+                )
                 .await
             {
                 Ok(resp) => {
@@ -96,7 +97,11 @@ impl HealthCheckService {
     ) {
         while running.load(Ordering::Acquire) {
             let token = config_store.get_config().session_token;
-            let client = if token.is_empty() { ApiClient::new() } else { ApiClient::new().with_token(&token) };
+            let client = if token.is_empty() {
+                ApiClient::new()
+            } else {
+                ApiClient::new().with_token(&token)
+            };
 
             let backend_live = client.get(API_HEALTH_CHECK_PING).await.is_ok();
             app_state.set_backend_live(backend_live);
@@ -106,7 +111,10 @@ impl HealthCheckService {
             if state.is_logged_in == Some(true) && !token.is_empty() {
                 let is_assistant_running = state.running_state == RunningState::Running;
                 if let Ok(resp) = client
-                    .post(API_HEALTH_CHECK_PING_CLIENT, &serde_json::json!({ "is_assistant_running": is_assistant_running }))
+                    .post(
+                        API_HEALTH_CHECK_PING_CLIENT,
+                        &serde_json::json!({ "is_assistant_running": is_assistant_running }),
+                    )
                     .await
                 {
                     if let Ok(data) = serde_json::from_value::<ClientPingResponse>(resp) {
@@ -120,7 +128,11 @@ impl HealthCheckService {
                 }
             }
 
-            let delay = if backend_live { SUCCESS_INTERVAL_MS } else { FAILURE_INTERVAL_MS };
+            let delay = if backend_live {
+                SUCCESS_INTERVAL_MS
+            } else {
+                FAILURE_INTERVAL_MS
+            };
             tokio::time::sleep(tokio::time::Duration::from_millis(delay)).await;
         }
     }

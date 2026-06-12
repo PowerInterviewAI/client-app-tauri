@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 
+use crate::consts::{LIVE_SUGGESTION_GAP_MS, TRANSCRIPT_INTER_TRANSCRIPT_GAP_MS};
 use crate::services::app_state::AppStateService;
 use crate::services::live_suggestion::LiveSuggestionService;
 use crate::types::app_state::{Speaker, Transcript};
-use crate::consts::{LIVE_SUGGESTION_GAP_MS, TRANSCRIPT_INTER_TRANSCRIPT_GAP_MS};
 use crate::utils::now_ms;
 
 struct TranscriptState {
@@ -35,7 +35,10 @@ pub struct TranscriptService {
 }
 
 impl TranscriptService {
-    pub fn new(app_state: Arc<AppStateService>, live_suggestion: Arc<LiveSuggestionService>) -> Self {
+    pub fn new(
+        app_state: Arc<AppStateService>,
+        live_suggestion: Arc<LiveSuggestionService>,
+    ) -> Self {
         Self {
             state: Mutex::new(TranscriptState::default()),
             app_state,
@@ -69,11 +72,21 @@ impl TranscriptService {
             return;
         }
 
-        let speaker = if channel.to_lowercase() == "ch_0" { Speaker::Other } else { Speaker::SelfSpeaker };
+        let speaker = if channel.to_lowercase() == "ch_0" {
+            Speaker::Other
+        } else {
+            Speaker::SelfSpeaker
+        };
         let is_final = transcript_type.to_lowercase() == "final";
         let now = now_ms();
 
-        let transcript = Transcript { timestamp: now, text, speaker: speaker.clone(), is_final, end_timestamp: now };
+        let transcript = Transcript {
+            timestamp: now,
+            text,
+            speaker: speaker.clone(),
+            is_final,
+            end_timestamp: now,
+        };
 
         let trigger_suggestion;
         let cleaned;
@@ -114,18 +127,34 @@ impl TranscriptService {
                 }
             }
 
-            let mut all: Vec<Transcript> = s.self_transcripts.iter().chain(s.other_transcripts.iter()).cloned().collect();
-            if let Some(ref p) = s.self_partial { all.push(p.clone()); }
-            if let Some(ref p) = s.other_partial { all.push(p.clone()); }
+            let mut all: Vec<Transcript> = s
+                .self_transcripts
+                .iter()
+                .chain(s.other_transcripts.iter())
+                .cloned()
+                .collect();
+            if let Some(ref p) = s.self_partial {
+                all.push(p.clone());
+            }
+            if let Some(ref p) = s.other_partial {
+                all.push(p.clone());
+            }
             all.sort_by_key(|t| t.timestamp);
 
             cleaned = Self::merge_consecutive(all);
 
-            let last_self = cleaned.iter().rev().find(|t| matches!(t.speaker, Speaker::SelfSpeaker) && t.is_final).cloned();
+            let last_self = cleaned
+                .iter()
+                .rev()
+                .find(|t| matches!(t.speaker, Speaker::SelfSpeaker) && t.is_final)
+                .cloned();
             trigger_suggestion = speaker == Speaker::Other
                 && is_final
                 && s.self_partial.is_none()
-                && last_self.as_ref().map(|t| now_ms() - t.end_timestamp > LIVE_SUGGESTION_GAP_MS).unwrap_or(true);
+                && last_self
+                    .as_ref()
+                    .map(|t| now_ms() - t.end_timestamp > LIVE_SUGGESTION_GAP_MS)
+                    .unwrap_or(true);
         }
 
         self.app_state.set_transcripts(cleaned.clone());
@@ -143,7 +172,9 @@ impl TranscriptService {
         let mut cleaned: Vec<Transcript> = vec![];
         for t in transcripts {
             if let Some(last) = cleaned.last_mut() {
-                if last.speaker == t.speaker && t.timestamp - last.end_timestamp <= TRANSCRIPT_INTER_TRANSCRIPT_GAP_MS {
+                if last.speaker == t.speaker
+                    && t.timestamp - last.end_timestamp <= TRANSCRIPT_INTER_TRANSCRIPT_GAP_MS
+                {
                     last.text.push(' ');
                     last.text.push_str(&t.text);
                     last.end_timestamp = t.end_timestamp;

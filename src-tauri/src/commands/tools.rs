@@ -1,14 +1,35 @@
 use serde::Serialize;
-use tauri::State;
+use tauri::{AppHandle, State};
+use tauri_plugin_opener::OpenerExt;
 
-use crate::AppServices;
 use crate::consts::API_LLM_SUMMARIZE;
 use crate::services::api_client::ApiClient;
 use crate::types::app_state::{LiveSuggestion, Transcript};
+use crate::AppServices;
 
 #[tauri::command]
 pub fn tools_clear_all(services: State<'_, AppServices>) {
     services.tools.clear_all();
+}
+
+/// Open the exported report with the OS default application ("Open file" in the
+/// export success toast). Invoked from Rust via `OpenerExt`, which bypasses the
+/// opener plugin's capability path scope; that is intentional here, the path is
+/// one the user just chose in the native save dialog.
+#[tauri::command]
+pub fn tools_open_path(app: AppHandle, path: String) -> Result<(), String> {
+    app.opener()
+        .open_path(path, None::<&str>)
+        .map_err(|e| e.to_string())
+}
+
+/// Reveal the exported report in its containing folder, highlighting the file in
+/// the OS file browser ("Open folder" in the export success toast).
+#[tauri::command]
+pub fn tools_reveal_path(app: AppHandle, path: String) -> Result<(), String> {
+    app.opener()
+        .reveal_item_in_dir(path)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

@@ -1,8 +1,8 @@
 use tauri::{AppHandle, Manager, State};
 
-use crate::AppServices;
 use crate::consts::ZOOM_STEP;
 use crate::types::config::WindowBounds;
+use crate::AppServices;
 
 #[tauri::command]
 pub fn window_close(app: AppHandle) {
@@ -80,7 +80,13 @@ pub fn window_resize_by_arrow(direction: String, services: State<'_, AppServices
 }
 
 #[tauri::command]
-pub fn window_save_bounds(x: i32, y: i32, width: u32, height: u32, services: State<'_, AppServices>) {
+pub fn window_save_bounds(
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+    services: State<'_, AppServices>,
+) {
     services.config_store.save_window_bounds(WindowBounds {
         x: Some(x),
         y: Some(y),

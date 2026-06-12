@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 use futures_util::StreamExt;
 use parking_lot::Mutex;
@@ -14,7 +14,9 @@ use crate::services::api_client::ApiClient;
 use crate::services::app_state::AppStateService;
 use crate::services::push_notification::PushNotificationService;
 use crate::store::ConfigStore;
-use crate::types::app_state::{ActionSuggestion, RunningState, Speaker, SuggestionState, Transcript};
+use crate::types::app_state::{
+    ActionSuggestion, RunningState, Speaker, SuggestionState, Transcript,
+};
 use crate::utils::{generate_uuid, now_ms};
 
 pub struct ActionSuggestionService {
@@ -84,7 +86,8 @@ impl ActionSuggestionService {
 
     pub fn clear_images(&self) {
         if self.app_state.get_state().running_state != RunningState::Running {
-            self.push_notification.warning("Cannot clear images when assistant is not running");
+            self.push_notification
+                .warning("Cannot clear images when assistant is not running");
             return;
         }
         self.uploaded_images.lock().clear();
@@ -93,7 +96,8 @@ impl ActionSuggestionService {
 
     pub async fn capture_screenshot(&self) {
         if self.app_state.get_state().running_state != RunningState::Running {
-            self.push_notification.warning("Cannot capture screenshot when assistant is not running");
+            self.push_notification
+                .warning("Cannot capture screenshot when assistant is not running");
             return;
         }
         if self.uploaded_images.lock().len() >= ACTION_SUGGESTION_MAX_CAPTURES as usize {
@@ -113,18 +117,26 @@ impl ActionSuggestionService {
         match result {
             Err(e) => {
                 log::error!("[ActionSuggestion] Screenshot capture failed: {}", e);
-                self.push_notification.error("Screenshot capture failed. Please try again.");
+                self.push_notification
+                    .error("Screenshot capture failed. Please try again.");
                 self.emit_suggestions(false);
             }
             Ok(png_bytes) => {
                 let conf = self.config_store.get_config();
                 let token = conf.session_token.clone();
-                let client = if token.is_empty() { ApiClient::new() } else { ApiClient::new().with_token(&token) };
+                let client = if token.is_empty() {
+                    ApiClient::new()
+                } else {
+                    ApiClient::new().with_token(&token)
+                };
 
-                let form = reqwest::multipart::Form::new()
-                    .part("image_file", reqwest::multipart::Part::bytes(png_bytes)
+                let form = reqwest::multipart::Form::new().part(
+                    "image_file",
+                    reqwest::multipart::Part::bytes(png_bytes)
                         .file_name("screenshot.png")
-                        .mime_str("image/png").unwrap());
+                        .mime_str("image/png")
+                        .unwrap(),
+                );
 
                 match client.post_multipart(API_LLM_UPLOAD_IMAGE, form).await {
                     Ok(resp) => {
@@ -135,7 +147,8 @@ impl ActionSuggestionService {
                     }
                     Err(e) => {
                         log::error!("[ActionSuggestion] Upload failed: {}", e);
-                        self.push_notification.error("Screenshot upload failed. Please try again.");
+                        self.push_notification
+                            .error("Screenshot upload failed. Please try again.");
                         self.emit_suggestions(false);
                     }
                 }
@@ -148,7 +161,8 @@ impl ActionSuggestionService {
     pub async fn start_generate_suggestion(&self) {
         let state = self.app_state.get_state();
         if state.running_state != RunningState::Running {
-            self.push_notification.warning("Cannot generate suggestion when assistant is not running");
+            self.push_notification
+                .warning("Cannot generate suggestion when assistant is not running");
             return;
         }
         if !self.action_lock.try_acquire(ActionType::CaptureSuggestion) {
@@ -156,12 +170,16 @@ impl ActionSuggestionService {
         }
 
         // stop any running tasks
-        for flag in self.abort_flags.lock().values() { flag.store(true, Ordering::Release); }
+        for flag in self.abort_flags.lock().values() {
+            flag.store(true, Ordering::Release);
+        }
         self.abort_flags.lock().clear();
 
         let task_id = generate_uuid();
         let abort_flag = Arc::new(AtomicBool::new(false));
-        self.abort_flags.lock().insert(task_id.clone(), Arc::clone(&abort_flag));
+        self.abort_flags
+            .lock()
+            .insert(task_id.clone(), Arc::clone(&abort_flag));
 
         let conf = self.config_store.get_config();
         let token = conf.session_token.clone();
@@ -194,7 +212,11 @@ impl ActionSuggestionService {
         let abort = Arc::clone(&abort_flag);
 
         tokio::spawn(async move {
-            let client = if token.is_empty() { ApiClient::new() } else { ApiClient::new().with_token(&token) };
+            let client = if token.is_empty() {
+                ApiClient::new()
+            } else {
+                ApiClient::new().with_token(&token)
+            };
 
             let emit = |map: &BTreeMap<i64, ActionSuggestion>| {
                 let list: Vec<ActionSuggestion> = map.values().cloned().collect();
@@ -205,14 +227,19 @@ impl ActionSuggestionService {
                 Err(e) => {
                     let error_msg = crate::utils::llm_error_message(&e);
                     let mut map = suggestions.lock();
-                    if let Some(s) = map.get_mut(&timestamp) { s.state = SuggestionState::Error; s.error = error_msg; }
+                    if let Some(s) = map.get_mut(&timestamp) {
+                        s.state = SuggestionState::Error;
+                        s.error = error_msg;
+                    }
                     emit(&map);
                     action_lock.release(ActionType::CaptureSuggestion);
                 }
                 Ok(resp) => {
                     {
                         let mut map = suggestions.lock();
-                        if let Some(s) = map.get_mut(&timestamp) { s.state = SuggestionState::Loading; }
+                        if let Some(s) = map.get_mut(&timestamp) {
+                            s.state = SuggestionState::Loading;
+                        }
                         emit(&map);
                     }
                     let mut stream = resp.bytes_stream();
@@ -222,7 +249,9 @@ impl ActionSuggestionService {
                     while let Some(chunk) = stream.next().await {
                         if abort.load(Ordering::Acquire) {
                             let mut map = suggestions.lock();
-                            if let Some(s) = map.get_mut(&timestamp) { s.state = SuggestionState::Stopped; }
+                            if let Some(s) = map.get_mut(&timestamp) {
+                                s.state = SuggestionState::Stopped;
+                            }
                             emit(&map);
                             action_lock.release(ActionType::CaptureSuggestion);
                             return;
@@ -231,13 +260,18 @@ impl ActionSuggestionService {
                             pending.extend_from_slice(&bytes);
                             crate::utils::drain_utf8(&mut pending, &mut answer);
                             let mut map = suggestions.lock();
-                            if let Some(s) = map.get_mut(&timestamp) { s.answer = answer.clone(); s.state = SuggestionState::Loading; }
+                            if let Some(s) = map.get_mut(&timestamp) {
+                                s.answer = answer.clone();
+                                s.state = SuggestionState::Loading;
+                            }
                             emit(&map);
                         }
                     }
                     let mut map = suggestions.lock();
                     if let Some(s) = map.get_mut(&timestamp) {
-                        if s.state == SuggestionState::Loading { s.state = SuggestionState::Success; }
+                        if s.state == SuggestionState::Loading {
+                            s.state = SuggestionState::Success;
+                        }
                     }
                     emit(&map);
                     action_lock.release(ActionType::CaptureSuggestion);
@@ -247,19 +281,25 @@ impl ActionSuggestionService {
     }
 
     pub fn clear(&self) {
-        for flag in self.abort_flags.lock().values() { flag.store(true, Ordering::Release); }
+        for flag in self.abort_flags.lock().values() {
+            flag.store(true, Ordering::Release);
+        }
         self.suggestions.lock().clear();
         self.uploaded_images.lock().clear();
         self.app_state.set_action_suggestions(vec![]);
     }
 
     pub fn stop(&self) {
-        for flag in self.abort_flags.lock().values() { flag.store(true, Ordering::Release); }
+        for flag in self.abort_flags.lock().values() {
+            flag.store(true, Ordering::Release);
+        }
     }
 }
 
 fn get_last_interviewer_question(transcripts: &[Transcript]) -> String {
-    transcripts.iter().rev()
+    transcripts
+        .iter()
+        .rev()
         .find(|t| matches!(t.speaker, Speaker::Other) && t.is_final)
         .map(|t| t.text.clone())
         .unwrap_or_default()
@@ -284,8 +324,11 @@ async fn capture_and_grayscale() -> Result<Vec<u8>, String> {
     let gray = dynamic.grayscale();
 
     let mut png_bytes: Vec<u8> = Vec::new();
-    gray.write_to(&mut std::io::Cursor::new(&mut png_bytes), image::ImageFormat::Png)
-        .map_err(|e| e.to_string())?;
+    gray.write_to(
+        &mut std::io::Cursor::new(&mut png_bytes),
+        image::ImageFormat::Png,
+    )
+    .map_err(|e| e.to_string())?;
 
     Ok(png_bytes)
 }

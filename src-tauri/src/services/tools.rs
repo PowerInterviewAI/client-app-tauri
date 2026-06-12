@@ -20,7 +20,9 @@ impl ToolsService {
     }
 
     pub fn set_placeholder_data(&self) {
-        use crate::types::app_state::{ActionSuggestion, LiveSuggestion, Speaker, SuggestionState, Transcript};
+        use crate::types::app_state::{
+            ActionSuggestion, LiveSuggestion, Speaker, SuggestionState, Transcript,
+        };
         use crate::utils::now_ms;
         let now = now_ms();
         self.app_state.update(|s| {

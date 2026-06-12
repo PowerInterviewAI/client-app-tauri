@@ -174,14 +174,19 @@ export const tauriApi = {
           filters: [{ name: 'Word Document', extensions: ['docx'] }],
           defaultPath: generateExportFilename(),
         });
-        if (filePath) {
-          await writeFile(filePath, bytes);
+        if (!filePath) {
+          // User cancelled the save dialog; nothing was written.
+          return null;
         }
+        await writeFile(filePath, bytes);
+        return filePath;
       } catch (e) {
         console.error('[Bridge] exportTranscript failed:', e);
         throw e;
       }
     },
+    openPath: (path: string) => invoke<void>('tools_open_path', { path }),
+    revealPath: (path: string) => invoke<void>('tools_reveal_path', { path }),
     clearAll: () => invoke('tools_clear_all'),
     setPlaceholderData: () => invoke('tools_set_placeholder_data'),
   },

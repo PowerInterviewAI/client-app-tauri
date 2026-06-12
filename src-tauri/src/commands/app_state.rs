@@ -1,8 +1,8 @@
 use serde_json::Value;
 use tauri::State;
 
-use crate::AppServices;
 use crate::types::app_state::AppState;
+use crate::AppServices;
 
 #[tauri::command]
 pub fn app_state_get(services: State<'_, AppServices>) -> AppState {

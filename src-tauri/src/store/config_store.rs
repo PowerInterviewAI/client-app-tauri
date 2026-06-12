@@ -20,7 +20,10 @@ impl ConfigStore {
             .ok()
             .and_then(|s| serde_json::from_str(&s).ok())
             .unwrap_or_default();
-        let store = Self { data: Mutex::new(data), path };
+        let store = Self {
+            data: Mutex::new(data),
+            path,
+        };
         store.migrate();
         store
     }
@@ -80,12 +83,17 @@ impl ConfigStore {
 
     pub fn get_stealth(&self) -> bool {
         let data = self.data.lock();
-        data.window.as_ref().and_then(|w| w.stealth).unwrap_or(false)
+        data.window
+            .as_ref()
+            .and_then(|w| w.stealth)
+            .unwrap_or(false)
     }
 
     pub fn set_stealth(&self, enabled: bool) {
         let mut data = self.data.lock();
-        data.window.get_or_insert_with(WindowConfig::default).stealth = Some(enabled);
+        data.window
+            .get_or_insert_with(WindowConfig::default)
+            .stealth = Some(enabled);
         drop(data);
         self.persist();
     }
@@ -97,19 +105,26 @@ impl ConfigStore {
 
     pub fn save_opacity_level(&self, level: usize) {
         let mut data = self.data.lock();
-        data.window.get_or_insert_with(WindowConfig::default).opacity_level = Some(level);
+        data.window
+            .get_or_insert_with(WindowConfig::default)
+            .opacity_level = Some(level);
         drop(data);
         self.persist();
     }
 
     pub fn get_zoom_factor(&self) -> f64 {
         let data = self.data.lock();
-        data.window.as_ref().and_then(|w| w.zoom_factor).unwrap_or(1.0)
+        data.window
+            .as_ref()
+            .and_then(|w| w.zoom_factor)
+            .unwrap_or(1.0)
     }
 
     pub fn save_zoom_factor(&self, factor: f64) {
         let mut data = self.data.lock();
-        data.window.get_or_insert_with(WindowConfig::default).zoom_factor = Some(factor);
+        data.window
+            .get_or_insert_with(WindowConfig::default)
+            .zoom_factor = Some(factor);
         drop(data);
         self.persist();
     }

@@ -37,6 +37,7 @@ os_info = "3"
 # WebSocket client for streaming loopback PCM to the ASR endpoint. native-tls keeps
 # the TLS backend consistent with reqwest (schannel on Windows, Secure Transport on macOS).
 tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+tauri-plugin-opener = "2"
 
 # Windows system-audio (loopback) capture. cpal opens the default render endpoint as an
 # input device, which WASAPI transparently captures in loopback mode.

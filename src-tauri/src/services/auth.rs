@@ -24,9 +24,14 @@ impl AuthService {
         password: &str,
     ) -> Result<Value, ApiError> {
         let client = ApiClient::new();
-        let body = serde_json::json!({ "username": username, "email": email, "password": password });
+        let body =
+            serde_json::json!({ "username": username, "email": email, "password": password });
         let resp = client.post(API_AUTH_SIGNUP, &body).await?;
-        if let Some(token) = resp.get("session_token").or_else(|| resp.get("access_token")).and_then(|t| t.as_str()) {
+        if let Some(token) = resp
+            .get("session_token")
+            .or_else(|| resp.get("access_token"))
+            .and_then(|t| t.as_str())
+        {
             config_store.update_config(serde_json::json!({ "sessionToken": token }));
         }
         Ok(resp)
@@ -40,7 +45,11 @@ impl AuthService {
         let client = ApiClient::new();
         let body = serde_json::json!({ "email": email, "password": password });
         let resp = client.post(API_AUTH_LOGIN, &body).await?;
-        if let Some(token) = resp.get("session_token").or_else(|| resp.get("access_token")).and_then(|t| t.as_str()) {
+        if let Some(token) = resp
+            .get("session_token")
+            .or_else(|| resp.get("access_token"))
+            .and_then(|t| t.as_str())
+        {
             config_store.update_config(serde_json::json!({ "sessionToken": token }));
         }
         Ok(resp)

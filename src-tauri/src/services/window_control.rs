@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -35,7 +35,7 @@ impl WindowControlService {
         config_store: Arc<ConfigStore>,
     ) -> Self {
         config_store.set_stealth(false); // always start non-stealth
-        // Restore the last-used opacity level (clamped in case the count changed), default mid.
+                                         // Restore the last-used opacity level (clamped in case the count changed), default mid.
         let opacity_index = config_store
             .get_opacity_level()
             .map(|i| i % OPACITY_LEVEL_COUNT)
@@ -64,13 +64,17 @@ impl WindowControlService {
         self.app_state.set_stealth(true);
         let _ = self.app_handle.emit("stealth-changed", true);
         // Apply the current background-opacity level once stealth styling is on.
-        let _ = self.app_handle.emit("stealth-opacity-level", *self.opacity_index.lock());
+        let _ = self
+            .app_handle
+            .emit("stealth-opacity-level", *self.opacity_index.lock());
 
         #[cfg(target_os = "macos")]
         {
             // hide dock icon in stealth mode
             use tauri::ActivationPolicy;
-            let _ = self.app_handle.set_activation_policy(ActivationPolicy::Accessory);
+            let _ = self
+                .app_handle
+                .set_activation_policy(ActivationPolicy::Accessory);
         }
     }
 
@@ -88,13 +92,16 @@ impl WindowControlService {
         #[cfg(target_os = "macos")]
         {
             use tauri::ActivationPolicy;
-            let _ = self.app_handle.set_activation_policy(ActivationPolicy::Regular);
+            let _ = self
+                .app_handle
+                .set_activation_policy(ActivationPolicy::Regular);
         }
     }
 
     pub fn toggle_stealth(&self) {
         if !self.app_state.get_state().is_logged_in.unwrap_or(false) {
-            self.push_notification.error("You must be logged in to use stealth mode.");
+            self.push_notification
+                .error("You must be logged in to use stealth mode.");
             return;
         }
         if *self.stealth.lock() {
@@ -106,7 +113,8 @@ impl WindowControlService {
 
     pub fn toggle_opacity(&self) {
         if !*self.stealth.lock() {
-            self.push_notification.warning("Opacity toggle is only available in stealth mode.");
+            self.push_notification
+                .warning("Opacity toggle is only available in stealth mode.");
             return;
         }
         let level = {
@@ -121,14 +129,23 @@ impl WindowControlService {
     }
 
     pub fn set_stealth(&self, enabled: bool) {
-        if enabled { self.enable_stealth() } else { self.disable_stealth() }
+        if enabled {
+            self.enable_stealth()
+        } else {
+            self.disable_stealth()
+        }
     }
 
     pub fn move_to_position(&self, position: &str) {
         let Some(win) = self.window() else { return };
-        let Ok(_scale) = win.scale_factor() else { return };
+        let Ok(_scale) = win.scale_factor() else {
+            return;
+        };
         let Ok(size) = win.inner_size() else { return };
-        let monitor = win.current_monitor().ok().flatten()
+        let monitor = win
+            .current_monitor()
+            .ok()
+            .flatten()
             .or_else(|| win.primary_monitor().ok().flatten());
         let Some(monitor) = monitor else { return };
         let screen_size = monitor.size();
@@ -158,7 +175,9 @@ impl WindowControlService {
 
     pub fn move_by_arrow(&self, direction: &str) {
         let Some(win) = self.window() else { return };
-        let Ok(pos) = win.outer_position() else { return };
+        let Ok(pos) = win.outer_position() else {
+            return;
+        };
         let (nx, ny) = match direction {
             "up" => (pos.x, pos.y - MOVE_AMOUNT),
             "down" => (pos.x, pos.y + MOVE_AMOUNT),

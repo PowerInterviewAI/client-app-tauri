@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 use futures_util::StreamExt;
 use parking_lot::Mutex;
@@ -54,7 +54,11 @@ impl LiveSuggestionService {
 
     pub async fn start_generate(&self, mut transcripts: Vec<Transcript>) {
         // remove trailing SELF transcripts (same as original)
-        while transcripts.last().map(|t| matches!(t.speaker, Speaker::SelfSpeaker)).unwrap_or(false) {
+        while transcripts
+            .last()
+            .map(|t| matches!(t.speaker, Speaker::SelfSpeaker))
+            .unwrap_or(false)
+        {
             transcripts.pop();
         }
         if transcripts.is_empty() {
@@ -66,7 +70,9 @@ impl LiveSuggestionService {
 
         let task_id = generate_uuid();
         let abort_flag = Arc::new(AtomicBool::new(false));
-        self.abort_flags.lock().insert(task_id.clone(), Arc::clone(&abort_flag));
+        self.abort_flags
+            .lock()
+            .insert(task_id.clone(), Arc::clone(&abort_flag));
 
         let conf = self.config_store.get_config();
         let token = conf.session_token.clone();
@@ -78,17 +84,23 @@ impl LiveSuggestionService {
         });
 
         let timestamp = now_ms();
-        let last_question = transcripts.last().map(|t| t.text.clone()).unwrap_or_default();
+        let last_question = transcripts
+            .last()
+            .map(|t| t.text.clone())
+            .unwrap_or_default();
 
         {
             let mut map = self.suggestions.lock();
-            map.insert(timestamp, LiveSuggestion {
+            map.insert(
                 timestamp,
-                last_question: last_question.clone(),
-                answer: String::new(),
-                state: SuggestionState::Pending,
-                error: String::new(),
-            });
+                LiveSuggestion {
+                    timestamp,
+                    last_question: last_question.clone(),
+                    answer: String::new(),
+                    state: SuggestionState::Pending,
+                    error: String::new(),
+                },
+            );
         }
         self.emit_suggestions();
 
@@ -130,7 +142,8 @@ impl LiveSuggestionService {
                     // While the (possibly partial) answer is still a prefix of the
                     // "no suggestion" sentinel, hide it from the UI; once it diverges
                     // (a real suggestion) re-show it, even if it was hidden moments ago.
-                    let update = |map: &mut BTreeMap<i64, LiveSuggestion>, current: &LiveSuggestion| {
+                    let update = |map: &mut BTreeMap<i64, LiveSuggestion>,
+                                  current: &LiveSuggestion| {
                         if !current.answer.is_empty()
                             && LIVE_SUGGESTION_NO_SUGGESTION.starts_with(&current.answer)
                         {

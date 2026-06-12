@@ -2,7 +2,9 @@
   "$schema": "https://schema.tauri.app/config/2/capability.json",
   "identifier": "default",
   "description": "Default capabilities for Power Interview AI",
-  "windows": ["main"],
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "core:window:allow-close",
@@ -38,6 +40,7 @@
     "fs:allow-appdata-write",
     "fs:allow-appdata-read",
     "updater:allow-check",
-    "updater:allow-download-and-install"
+    "updater:allow-download-and-install",
+    "opener:default"
   ]
 }

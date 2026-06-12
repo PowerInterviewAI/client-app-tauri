@@ -1,8 +1,8 @@
 use serde_json::Value;
 use tauri::State;
 
-use crate::AppServices;
 use crate::services::payment::PaymentService;
+use crate::AppServices;
 
 #[tauri::command]
 pub async fn payment_get_plans(services: State<'_, AppServices>) -> Result<Value, String> {
@@ -15,12 +15,18 @@ pub async fn payment_get_currencies(services: State<'_, AppServices>) -> Result<
 }
 
 #[tauri::command]
-pub async fn payment_create(data: Value, services: State<'_, AppServices>) -> Result<Value, String> {
+pub async fn payment_create(
+    data: Value,
+    services: State<'_, AppServices>,
+) -> Result<Value, String> {
     PaymentService::create_payment(&services.config_store, data).await
 }
 
 #[tauri::command]
-pub async fn payment_get_status(payment_id: String, services: State<'_, AppServices>) -> Result<Value, String> {
+pub async fn payment_get_status(
+    payment_id: String,
+    services: State<'_, AppServices>,
+) -> Result<Value, String> {
     PaymentService::get_payment_status(&services.config_store, &payment_id).await
 }
 

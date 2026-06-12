@@ -23,7 +23,7 @@ export function UpdateNotification() {
       },
       cancel: {
         label: 'Later',
-        onClick: () => toast.info('Will install on next restart.'),
+        onClick: () => toast.info('Restart anytime to apply the update.'),
       },
     });
   }, [updateStatus, quitAndInstall]);

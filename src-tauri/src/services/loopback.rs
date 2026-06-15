@@ -567,7 +567,7 @@ mod capture {
         // dropped. A tiny frame size keeps that overhead negligible.
         let config = SCStreamConfiguration::new()
             .with_captures_audio(true)
-            .with_sample_rate(SAMPLE_RATE)
+            .with_sample_rate(SAMPLE_RATE as i32)
             .with_channel_count(1)
             .with_width(2)
             .with_height(2);

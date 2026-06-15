@@ -1,5 +1,7 @@
-// Backend URL - set via environment variable or defaults
-pub const BACKEND_BASE_URL: &str = if cfg!(debug_assertions) {
+// Backend URL. Debug builds point at a local backend, release builds at production.
+// macOS always uses production (even in debug), since the local backend is only run
+// on the Windows development setup.
+pub const BACKEND_BASE_URL: &str = if cfg!(debug_assertions) && !cfg!(target_os = "macos") {
     "http://localhost:8080"
 } else {
     "https://api.powerinterviewai.com"

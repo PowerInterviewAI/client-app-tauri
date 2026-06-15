@@ -69,21 +69,15 @@ export default function Titlebar() {
     <>
       <div
         id="titlebar"
-        // eslint-disable-next-line
-        style={{ WebkitAppRegion: 'drag', paddingLeft: macPaddingLeft } as any}
+        data-tauri-drag-region="deep"
+        style={{ paddingLeft: macPaddingLeft }}
         className="flex items-center gap-3 h-9 pr-1 pl-1 select-none bg-card border-b border-border"
       >
         {!isMac && (
           <div className="flex flex-1 items-center gap-2 px-1">
             <img src={faviconSvg} alt="logo" className="h-5 w-5" />
 
-            <div
-              className="text-sm font-medium"
-              // eslint-disable-next-line
-              style={{ WebkitAppRegion: 'drag' } as any}
-            >
-              Power Interview AI
-            </div>
+            <div className="text-sm font-medium">Power Interview AI</div>
           </div>
         )}
         {isMac && <div className="flex-1" />}
@@ -92,16 +86,10 @@ export default function Titlebar() {
           <CreditsDisplay
             credits={appState.credits ?? 0}
             llmModel={config?.llmConf?.model ?? appState.providedLlmModel ?? ''}
-            // eslint-disable-next-line
-            style={{ WebkitAppRegion: 'drag' } as any}
           />
         )}
 
-        <div
-          className="ml-auto flex items-center gap-1"
-          // eslint-disable-next-line
-          style={{ WebkitAppRegion: 'no-drag' } as any}
-        >
+        <div className="ml-auto flex items-center gap-1">
           {appState?.isLoggedIn && appState?.credits !== undefined && (
             <>
               <hr className="h-6 border border-border" />
@@ -115,10 +103,7 @@ export default function Titlebar() {
                   onClick={handleToggleStealth}
                   aria-label="Toggle stealth mode"
                   title="Toggle stealth mode"
-                  className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted"
-                  // eslint-disable-next-line
-                  style={{ WebkitAppRegion: 'no-drag' } as any}
-                >
+                  className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted"                >
                   <EyeOff className="h-4 w-4" />
                 </button>
               </TooltipTrigger>
@@ -132,10 +117,7 @@ export default function Titlebar() {
               <button
                 onClick={() => toggleTheme()}
                 aria-label="Toggle theme"
-                className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted"
-                // eslint-disable-next-line
-                style={{ WebkitAppRegion: 'no-drag' } as any}
-              >
+                className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted"              >
                 {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </button>
             </TooltipTrigger>
@@ -149,10 +131,7 @@ export default function Titlebar() {
               <button
                 onClick={() => setIsDocsOpen(true)}
                 aria-label="Documentation"
-                className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted"
-                // eslint-disable-next-line
-                style={{ WebkitAppRegion: 'no-drag' } as any}
-              >
+                className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted"              >
                 <span className="font-medium">?</span>
               </button>
             </TooltipTrigger>
@@ -168,10 +147,7 @@ export default function Titlebar() {
                   <button
                     onClick={handleMinimize}
                     aria-label="Minimize"
-                    className="h-7 w-12 flex items-center justify-center rounded hover:bg-muted"
-                    // eslint-disable-next-line
-                    style={{ WebkitAppRegion: 'no-drag' } as any}
-                  >
+                    className="h-7 w-12 flex items-center justify-center rounded hover:bg-muted"                  >
                     <Minus className="h-4 w-4" />
                   </button>
                 </TooltipTrigger>
@@ -185,10 +161,7 @@ export default function Titlebar() {
                   <button
                     onClick={handleToggleMaximize}
                     aria-label="Maximize"
-                    className="h-7 w-12 flex items-center justify-center rounded hover:bg-muted"
-                    // eslint-disable-next-line
-                    style={{ WebkitAppRegion: 'no-drag' } as any}
-                  >
+                    className="h-7 w-12 flex items-center justify-center rounded hover:bg-muted"                  >
                     <Square className="h-3.5 w-3.5" />
                   </button>
                 </TooltipTrigger>
@@ -202,10 +175,7 @@ export default function Titlebar() {
                   <button
                     onClick={handleClose}
                     aria-label="Close"
-                    className="h-7 w-12 flex items-center justify-center rounded hover:bg-destructive/50"
-                    // eslint-disable-next-line
-                    style={{ WebkitAppRegion: 'no-drag' } as any}
-                  >
+                    className="h-7 w-12 flex items-center justify-center rounded hover:bg-destructive/50"                  >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       className="h-4 w-4"

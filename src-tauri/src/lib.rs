@@ -102,12 +102,16 @@ pub fn run() {
                 }
             }
 
-            // macOS: use transparent titlebar so native traffic lights are visible
+            // macOS: enable decorations with an overlay titlebar so the native traffic
+            // lights are shown over our custom titlebar. The window stays borderless on
+            // Windows (decorations: false in tauri.conf.json); the traffic lights are part
+            // of the native frame, so they require decorations to be on here.
             #[cfg(target_os = "macos")]
             {
                 if let Some(win) = handle.get_webview_window("main") {
                     use tauri::TitleBarStyle;
-                    let _ = win.set_title_bar_style(TitleBarStyle::Transparent);
+                    let _ = win.set_decorations(true);
+                    let _ = win.set_title_bar_style(TitleBarStyle::Overlay);
                 }
             }
 

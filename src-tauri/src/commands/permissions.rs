@@ -12,16 +12,21 @@ pub async fn permissions_show_denied_dialog(
     // macOS does not re-show the native permission prompt after the first decision, so we
     // can only point the user at the right System Settings pane to re-grant it. These
     // `x-apple.systempreferences:` deep links open directly to the relevant Privacy section.
-    let (label, settings_url) = if permission_type == "screen-recording" {
-        (
+    let (label, settings_url) = match permission_type.as_str() {
+        "screen-recording" => (
             "Screen Recording",
             "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
-        )
-    } else {
-        (
+        ),
+        // System audio is captured via CoreAudio process taps, gated by the Audio Capture
+        // permission (Privacy_AudioCapture), not Screen Recording.
+        "system-audio" => (
+            "Audio Capture",
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_AudioCapture",
+        ),
+        _ => (
             "Microphone",
             "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
-        )
+        ),
     };
 
     // `blocking_show` returns true when the first (OK) button is pressed.

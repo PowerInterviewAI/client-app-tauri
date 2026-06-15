@@ -8,7 +8,7 @@
 //!
 //! Capture backends:
 //! - Windows: WASAPI loopback via `cpal` (the default render endpoint opened as input).
-//! - macOS: ScreenCaptureKit audio capture.
+//! - macOS: CoreAudio process taps via `cidre` (Audio Capture permission, no Screen Recording).
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -455,13 +455,20 @@ mod capture {
 
 #[cfg(target_os = "macos")]
 mod capture {
+    //! System-audio capture via CoreAudio process taps (macOS 14.4+). A mono global tap is
+    //! aggregated with the default output device and read through an IO proc. This uses the
+    //! "Audio Capture" privacy permission, NOT Screen Recording, so it avoids ScreenCaptureKit's
+    //! screen-recording requirement (and its restart-after-grant / capture-failure issues).
+    //! Ported from Pluely's `speaker/macos.rs`.
     use super::ChunkSender;
-    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
     use std::sync::Arc;
     use std::time::Duration;
 
-    use screencapturekit::prelude::*;
+    use ca::aggregate_device_keys as agg_keys;
+    use cidre::{arc, av, cat, cf, core_audio as ca, ns, os};
 
+    /// Owns the capture thread; joining it drops the started device + tap, stopping capture.
     pub struct CaptureHandle {
         thread: Option<std::thread::JoinHandle<()>>,
     }
@@ -474,43 +481,52 @@ mod capture {
         }
     }
 
-    struct AudioHandler {
+    /// Client data for the CoreAudio IO proc. Boxed and kept alive for the device's lifetime.
+    struct Ctx {
+        format: arc::R<av::AudioFormat>,
         tx: ChunkSender,
         stop: Arc<AtomicBool>,
+        sample_rate: Arc<AtomicU32>,
     }
 
-    impl SCStreamOutputTrait for AudioHandler {
-        fn did_output_sample_buffer(&self, sample: CMSampleBuffer, of_type: SCStreamOutputType) {
-            match of_type {
-                SCStreamOutputType::Audio => {}
-                _ => return,
+    extern "C" fn proc(
+        device: ca::Device,
+        _now: &cat::AudioTimeStamp,
+        input_data: &cat::AudioBufList<1>,
+        _input_time: &cat::AudioTimeStamp,
+        _output_data: &mut cat::AudioBufList<1>,
+        _output_time: &cat::AudioTimeStamp,
+        ctx: Option<&mut Ctx>,
+    ) -> os::Status {
+        let Some(ctx) = ctx else {
+            return os::Status::NO_ERR;
+        };
+        ctx.sample_rate.store(
+            device
+                .actual_sample_rate()
+                .unwrap_or(ctx.format.absd().sample_rate) as u32,
+            Ordering::Release,
+        );
+        if ctx.stop.load(Ordering::Acquire) {
+            return os::Status::NO_ERR;
+        }
+        // The tap is a mono global tap, so buffer 0 is the mono system-audio signal.
+        if let Some(view) = av::AudioPcmBuf::with_buf_list_no_copy(&ctx.format, input_data, None) {
+            if let Some(data) = view.data_f32_at(0) {
+                if !data.is_empty() {
+                    let _ = ctx.tx.try_send(data.to_vec());
+                }
             }
-            if self.stop.load(Ordering::Acquire) {
-                return;
-            }
-            // ScreenCaptureKit delivers 32-bit float PCM. Use the first buffer as the mono
-            // signal; for an interleaved buffer, take channel 0 of each frame.
-            let Some(list) = sample.audio_buffer_list() else {
-                return;
-            };
-            let Some(buffer) = list.get(0) else {
-                return;
-            };
-            let bytes = buffer.data();
-            let channels = (buffer.number_channels.max(1)) as usize;
-            let frame_bytes = 4 * channels;
-            if frame_bytes == 0 {
-                return;
-            }
-            let mut mono = Vec::with_capacity(bytes.len() / frame_bytes);
-            for frame in bytes.chunks_exact(frame_bytes) {
-                let value = f32::from_le_bytes([frame[0], frame[1], frame[2], frame[3]]);
-                mono.push(value);
-            }
-            if !mono.is_empty() {
-                let _ = self.tx.try_send(mono);
+        } else if ctx.format.common_format() == av::audio::CommonFormat::PcmF32 {
+            let buffer = &input_data.buffers[0];
+            let float_count = buffer.data_bytes_size as usize / std::mem::size_of::<f32>();
+            if float_count > 0 && !buffer.data.is_null() {
+                let data =
+                    unsafe { std::slice::from_raw_parts(buffer.data as *const f32, float_count) };
+                let _ = ctx.tx.try_send(data.to_vec());
             }
         }
+        os::Status::NO_ERR
     }
 
     pub fn start_capture(
@@ -542,55 +558,107 @@ mod capture {
         stop: Arc<AtomicBool>,
         setup_tx: std::sync::mpsc::Sender<Result<u32, String>>,
     ) {
-        const SAMPLE_RATE: u32 = 48_000;
-
-        let content = match SCShareableContent::get() {
-            Ok(c) => c,
+        // Mono global system-audio tap (excludes no processes).
+        let tap_desc = ca::TapDesc::with_mono_global_tap_excluding_processes(&ns::Array::new());
+        let tap = match tap_desc.create_process_tap() {
+            Ok(tap) => tap,
             Err(e) => {
-                let _ = setup_tx.send(Err(format!("Screen recording permission required: {e}")));
-                return;
-            }
-        };
-        let display = match content.displays().into_iter().next() {
-            Some(d) => d,
-            None => {
-                let _ = setup_tx.send(Err("No display available for audio capture".into()));
+                let _ = setup_tx.send(Err(format!("System audio capture unavailable: {e}")));
                 return;
             }
         };
 
-        let filter = SCContentFilter::create()
-            .with_display(&display)
-            .with_excluding_windows(&[])
-            .build();
-        // Audio-only: SCK still produces video frames, but with no Screen handler they are
-        // dropped. A tiny frame size keeps that overhead negligible.
-        let config = SCStreamConfiguration::new()
-            .with_captures_audio(true)
-            .with_sample_rate(SAMPLE_RATE as i32)
-            .with_channel_count(1)
-            .with_width(2)
-            .with_height(2);
+        let output_uid = match ca::System::default_output_device().and_then(|d| d.uid()) {
+            Ok(uid) => uid,
+            Err(e) => {
+                let _ = setup_tx.send(Err(format!("No default output device: {e}")));
+                return;
+            }
+        };
 
-        let mut stream = SCStream::new(&filter, &config);
-        stream.add_output_handler(
-            AudioHandler {
-                tx,
-                stop: Arc::clone(&stop),
-            },
-            SCStreamOutputType::Audio,
+        let sub_device = cf::DictionaryOf::with_keys_values(
+            &[ca::sub_device_keys::uid()],
+            &[output_uid.as_type_ref()],
+        );
+        let sub_tap = cf::DictionaryOf::with_keys_values(
+            &[ca::sub_device_keys::uid()],
+            &[tap.uid().unwrap().as_type_ref()],
+        );
+        let agg_desc = cf::DictionaryOf::with_keys_values(
+            &[
+                agg_keys::is_private(),
+                agg_keys::is_stacked(),
+                agg_keys::tap_auto_start(),
+                agg_keys::name(),
+                agg_keys::main_sub_device(),
+                agg_keys::uid(),
+                agg_keys::sub_device_list(),
+                agg_keys::tap_list(),
+            ],
+            &[
+                cf::Boolean::value_true().as_type_ref(),
+                cf::Boolean::value_false(),
+                cf::Boolean::value_true(),
+                cf::str!(c"power-interview-system-audio-tap"),
+                &output_uid,
+                &cf::Uuid::new().to_cf_string(),
+                &cf::ArrayOf::from_slice(&[sub_device.as_ref()]),
+                &cf::ArrayOf::from_slice(&[sub_tap.as_ref()]),
+            ],
         );
 
-        if let Err(e) = stream.start_capture() {
-            let _ = setup_tx.send(Err(format!("Failed to start audio capture: {e}")));
+        let asbd = match tap.asbd() {
+            Ok(asbd) => asbd,
+            Err(e) => {
+                let _ = setup_tx.send(Err(format!("Failed to read tap audio format: {e}")));
+                return;
+            }
+        };
+        let Some(format) = av::AudioFormat::with_asbd(&asbd) else {
+            let _ = setup_tx.send(Err("Failed to build audio format".into()));
             return;
-        }
-        let _ = setup_tx.send(Ok(SAMPLE_RATE));
+        };
+        let sample_rate = Arc::new(AtomicU32::new(asbd.sample_rate as u32));
 
+        let mut ctx = Box::new(Ctx {
+            format,
+            tx,
+            stop: Arc::clone(&stop),
+            sample_rate: Arc::clone(&sample_rate),
+        });
+
+        let agg_device = match ca::AggregateDevice::with_desc(&agg_desc) {
+            Ok(device) => device,
+            Err(e) => {
+                let _ = setup_tx.send(Err(format!("Failed to create aggregate device: {e}")));
+                return;
+            }
+        };
+        let proc_id = match agg_device.create_io_proc_id(proc, Some(&mut ctx)) {
+            Ok(id) => id,
+            Err(e) => {
+                let _ = setup_tx.send(Err(format!("Failed to create audio IO proc: {e}")));
+                return;
+            }
+        };
+        let started = match ca::device_start(agg_device, Some(proc_id)) {
+            Ok(started) => started,
+            Err(e) => {
+                let _ = setup_tx.send(Err(format!("Failed to start audio capture: {e}")));
+                return;
+            }
+        };
+
+        let _ = setup_tx.send(Ok(sample_rate.load(Ordering::Acquire)));
+
+        // Keep the started device, IO-proc context, and tap alive until asked to stop.
         while !stop.load(Ordering::Acquire) {
             std::thread::sleep(Duration::from_millis(50));
         }
-        let _ = stream.stop_capture();
+
+        drop(started);
+        drop(ctx);
+        drop(tap);
     }
 }
 

@@ -296,24 +296,14 @@ class LiveTranscriptionService {
         video: false,
       });
 
-      // Start native loopback capture + streaming. A failure here is typically the macOS
-      // screen-recording permission being denied.
+      // Start native loopback capture + streaming. On macOS this uses CoreAudio process taps,
+      // gated by the Audio Capture permission (not Screen Recording), so a failure here is
+      // typically that permission being unavailable.
       try {
         await tauri.transcription.enableLoopbackAudio();
       } catch (err) {
         if (isMacOS) {
-          // Loopback uses ScreenCaptureKit, which needs Screen Recording permission.
-          // If the permission already reads as granted, capture failed because macOS
-          // requires the app to restart after the grant before SCK can attach, so guide
-          // the user to restart. Otherwise it is a genuine denial: prompt + register the
-          // app, then send them to Settings.
-          const granted = await tauri.permissions.checkScreenRecording();
-          if (granted) {
-            await tauri.permissions.showRestartDialog();
-          } else {
-            await tauri.permissions.requestScreenRecording();
-            await tauri.permissions.showDeniedDialog('screen-recording');
-          }
+          await tauri.permissions.showDeniedDialog('system-audio');
           throw Object.assign(new Error(), { name: 'PermissionError' });
         }
         throw err;

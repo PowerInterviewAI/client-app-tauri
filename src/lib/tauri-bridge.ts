@@ -226,7 +226,7 @@ export const tauriApi = {
       invoke('plugin:macos-permissions|check_microphone_permission').then((r) => !!r),
     requestMicrophone: () =>
       invoke('plugin:macos-permissions|request_microphone_permission').then(() => undefined),
-    showDeniedDialog: (type: 'screen-recording' | 'microphone') =>
+    showDeniedDialog: (type: 'screen-recording' | 'microphone' | 'system-audio') =>
       // Tauri v2 exposes the Rust `permission_type` arg to JS as camelCase `permissionType`.
       invoke('permissions_show_denied_dialog', { permissionType: type }),
     showRestartDialog: () => invoke('permissions_show_restart_dialog'),

@@ -31,22 +31,15 @@ export const useAssistantService = create<AssistantService>((set) => ({
     try {
       set({ error: null });
 
-      // Microphone is handled by getUserMedia() in liveTranscriptionService.start() below: it
-      // triggers the native prompt, awaits the user's response, and registers the app. A denial
-      // surfaces as NotAllowedError and is handled in the catch, so we do not pre-flight the mic
-      // here (a non-awaiting plugin request would race the system prompt with our dialog).
-      //
-      // Screen recording gates system-audio capture (ScreenCaptureKit) and the coding-challenge
-      // screenshots, and has no getUserMedia equivalent, so we pre-flight it. The check is the
-      // accurate native state (CGPreflightScreenCaptureAccess; true off macOS). If not granted,
-      // request it (prompts on first run and registers the app in System Settings), then guide
-      // the user to enable it and restart, since macOS only applies the grant after relaunch.
-      const screenGranted = await tauri.permissions.checkScreenRecording();
-      if (!screenGranted) {
-        await tauri.permissions.requestScreenRecording();
-        await tauri.permissions.showDeniedDialog('screen-recording');
-        return;
-      }
+      // No permission pre-flight here, both inputs request/surface their own permission:
+      //   - Microphone: getUserMedia() in liveTranscriptionService.start() triggers the native
+      //     prompt, awaits the response, and registers the app; a denial becomes NotAllowedError
+      //     (handled in the catch below).
+      //   - System audio: captured via CoreAudio process taps (loopback.rs), gated by the Audio
+      //     Capture permission (not Screen Recording). A tap failure surfaces from
+      //     enableLoopbackAudio() and is handled in liveTranscriptionService with a guidance
+      //     dialog. Screen Recording is only needed for coding-challenge screenshots, which
+      //     prompt when the user actually captures one.
 
       tauri.appState.update({ runningState: RunningState.Starting });
 

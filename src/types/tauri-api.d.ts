@@ -158,7 +158,7 @@ declare global {
       requestScreenRecording: () => Promise<void>;
       checkMicrophone: () => Promise<boolean>;
       requestMicrophone: () => Promise<void>;
-      showDeniedDialog: (type: 'screen-recording' | 'microphone') => Promise<void>;
+      showDeniedDialog: (type: 'screen-recording' | 'microphone' | 'system-audio') => Promise<void>;
       showRestartDialog: () => Promise<void>;
     };
 

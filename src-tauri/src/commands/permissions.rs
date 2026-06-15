@@ -46,20 +46,43 @@ pub async fn permissions_show_denied_dialog(
     permission_type: String, // matches snake_case from bridge
     app: tauri::AppHandle,
 ) -> Result<(), String> {
-    use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
-    let label = if permission_type == "screen-recording" {
-        "Screen Recording"
+    use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+
+    // macOS does not re-show the native permission prompt after the first decision, so we
+    // can only point the user at the right System Settings pane to re-grant it. These
+    // `x-apple.systempreferences:` deep links open directly to the relevant Privacy section.
+    let (label, settings_url) = if permission_type == "screen-recording" {
+        (
+            "Screen Recording",
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
+        )
     } else {
-        "Microphone"
+        (
+            "Microphone",
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
+        )
     };
-    app.dialog()
+
+    // `blocking_show` returns true when the first (OK) button is pressed.
+    let open_settings = app
+        .dialog()
         .message(format!(
-            "{} permission was denied.\nPlease enable it in System Settings > Privacy & Security > {}.",
-            label, label
+            "{label} permission was denied.\nEnable it in System Settings > Privacy & Security > {label}, then restart Power Interview AI."
         ))
         .kind(MessageDialogKind::Error)
         .title("Permission Required")
+        .buttons(MessageDialogButtons::OkCancelCustom(
+            "Open System Settings".to_string(),
+            "Cancel".to_string(),
+        ))
         .blocking_show();
+
+    if open_settings {
+        use tauri_plugin_opener::OpenerExt;
+        app.opener()
+            .open_url(settings_url, None::<&str>)
+            .map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 

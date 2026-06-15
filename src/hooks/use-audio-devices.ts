@@ -2,15 +2,61 @@ import { useEffect, useState } from 'react';
 
 import { type AudioDevice } from '@/types/audio-device';
 
+/**
+ * Whether the page already holds microphone permission, without triggering a prompt.
+ *
+ * Uses the Permissions API; on engines that don't support querying 'microphone'
+ * (notably macOS WKWebView) this resolves to false so we never auto-prompt.
+ */
+async function hasMicPermission(): Promise<boolean> {
+  try {
+    const status = await navigator.permissions.query({
+      name: 'microphone' as PermissionName,
+    });
+    return status.state === 'granted';
+  } catch {
+    return false;
+  }
+}
+
 function useAudioDevices(kind: 'audioinput' | 'audiooutput', deviceType: string) {
   const [devices, setDevices] = useState<AudioDevice[]>([]);
 
   useEffect(() => {
-    async function fetchDevices() {
+    let cancelled = false;
+    // Guard so the label-unlock stream is attempted at most once per mount.
+    let unlockAttempted = false;
+
+    async function enumerate() {
       try {
         const allDevices = await navigator.mediaDevices.enumerateDevices();
-        const filtered = allDevices
-          .filter((device) => device.kind === kind)
+        if (cancelled) return;
+
+        const matching = allDevices.filter((device) => device.kind === kind);
+
+        // Browsers hide device labels (and macOS/WKWebView hides non-default devices
+        // entirely) until the page has active media access. If we already hold mic
+        // permission but labels are still blank, briefly open a stream once to unlock
+        // them, then re-enumerate. Gated on existing permission so this never prompts.
+        if (
+          kind === 'audioinput' &&
+          !unlockAttempted &&
+          matching.length > 0 &&
+          matching.every((device) => !device.label) &&
+          (await hasMicPermission())
+        ) {
+          unlockAttempted = true;
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach((track) => track.stop());
+            if (!cancelled) await enumerate();
+            return;
+          } catch {
+            // Device busy or permission revoked between checks; use what we have.
+          }
+        }
+
+        const filtered = matching
           .filter((device) => {
             const label = device.label.toLowerCase();
             return !label.includes('default') && !label.includes('communications');
@@ -25,11 +71,16 @@ function useAudioDevices(kind: 'audioinput' | 'audiooutput', deviceType: string)
       }
     }
 
-    fetchDevices();
-    navigator.mediaDevices.addEventListener('devicechange', fetchDevices);
+    enumerate();
+    // Refresh on hot-plug (devicechange) and when the window regains focus, e.g. after the
+    // user returns from granting permission in System Settings.
+    navigator.mediaDevices.addEventListener('devicechange', enumerate);
+    window.addEventListener('focus', enumerate);
 
     return () => {
-      navigator.mediaDevices.removeEventListener('devicechange', fetchDevices);
+      cancelled = true;
+      navigator.mediaDevices.removeEventListener('devicechange', enumerate);
+      window.removeEventListener('focus', enumerate);
     };
   }, [kind, deviceType]);
 

@@ -101,16 +101,13 @@ pub async fn permissions_show_restart_dialog(app: tauri::AppHandle) -> Result<()
 
 #[cfg(target_os = "macos")]
 fn check_screen_recording_macos() -> &'static str {
-    // Attempt to capture to check permission
-    match xcap::Monitor::all().and_then(|m| {
-        m.into_iter()
-            .next()
-            .ok_or(xcap::XCapError::new("no monitor"))
-    }) {
-        Ok(mon) => match mon.capture_image() {
-            Ok(_) => "granted",
-            Err(_) => "denied",
-        },
+    // Use ScreenCaptureKit's own gate, the exact API the system-audio loopback relies on, so
+    // this check agrees with whether capture can actually run. xcap's screenshot path can
+    // report success via legacy CoreGraphics APIs even when ScreenCaptureKit is blocked, which
+    // previously produced a false "granted" and the endless "please restart" loop.
+    use screencapturekit::prelude::*;
+    match SCShareableContent::get() {
+        Ok(_) => "granted",
         Err(_) => "denied",
     }
 }

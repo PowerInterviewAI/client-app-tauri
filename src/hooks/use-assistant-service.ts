@@ -31,37 +31,21 @@ export const useAssistantService = create<AssistantService>((set) => ({
     try {
       set({ error: null });
 
-      // Pre-flight permission checks before any state change.
+      // Microphone is handled by getUserMedia() in liveTranscriptionService.start() below: it
+      // triggers the native prompt, awaits the user's response, and registers the app. A denial
+      // surfaces as NotAllowedError and is handled in the catch, so we do not pre-flight the mic
+      // here (a non-awaiting plugin request would race the system prompt with our dialog).
       //
-      // Microphone: only hard-block when the OS reports an explicit denial. For
-      // 'not-determined'/'unknown' we let getUserMedia() trigger the native OS prompt
-      // in the start flow - that is the real request path on both platforms (there is
-      // no reliable programmatic request API in the webview).
-      // Screen recording: check only - the OS dialog fires automatically when
-      // getDisplayMedia() is called.
-      const micStatus = await tauri.permissions.checkMicrophone();
-      if (micStatus === 'denied' || micStatus === 'restricted') {
-        await tauri.permissions.showDeniedDialog('microphone');
-        return;
-      }
-
-      // desktopCapturer.getSources() returns [] when screen recording is denied,
-      // causing getDisplayMedia() to hang indefinitely - guard against it here.
-      const screenStatus = await tauri.permissions.checkScreenRecording();
-      if (screenStatus === 'denied' || screenStatus === 'restricted') {
+      // Screen recording gates system-audio capture (ScreenCaptureKit) and the coding-challenge
+      // screenshots, and has no getUserMedia equivalent, so we pre-flight it. The check is the
+      // accurate native state (CGPreflightScreenCaptureAccess; true off macOS). If not granted,
+      // request it (prompts on first run and registers the app in System Settings), then guide
+      // the user to enable it and restart, since macOS only applies the grant after relaunch.
+      const screenGranted = await tauri.permissions.checkScreenRecording();
+      if (!screenGranted) {
+        await tauri.permissions.requestScreenRecording();
         await tauri.permissions.showDeniedDialog('screen-recording');
         return;
-      }
-
-      // On macOS, even when getMediaAccessStatus returns 'granted', desktopCapturer.getSources()
-      // returns [] if the app hasn't been restarted since permission was first granted.
-      // Detect this early to avoid a 20-second getDisplayMedia timeout and show a clear message.
-      if (screenStatus === 'granted') {
-        const hasSources = await tauri.permissions.checkScreenSources();
-        if (!hasSources) {
-          await tauri.permissions.showRestartDialog();
-          return;
-        }
       }
 
       tauri.appState.update({ runningState: RunningState.Starting });

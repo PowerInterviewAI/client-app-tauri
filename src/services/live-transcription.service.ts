@@ -305,11 +305,13 @@ class LiveTranscriptionService {
           // Loopback uses ScreenCaptureKit, which needs Screen Recording permission.
           // If the permission already reads as granted, capture failed because macOS
           // requires the app to restart after the grant before SCK can attach, so guide
-          // the user to restart. Otherwise it is a genuine denial: send them to Settings.
-          const status = await tauri.permissions.checkScreenRecording();
-          if (status === 'granted') {
+          // the user to restart. Otherwise it is a genuine denial: prompt + register the
+          // app, then send them to Settings.
+          const granted = await tauri.permissions.checkScreenRecording();
+          if (granted) {
             await tauri.permissions.showRestartDialog();
           } else {
+            await tauri.permissions.requestScreenRecording();
             await tauri.permissions.showDeniedDialog('screen-recording');
           }
           throw Object.assign(new Error(), { name: 'PermissionError' });

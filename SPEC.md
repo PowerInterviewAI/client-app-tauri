@@ -347,19 +347,25 @@ running", max screenshots reached, upload failures).
 
 ## Permissions
 
-`src-tauri/src/commands/permissions.rs`:
+Microphone and screen-recording permissions are checked and requested via
+[`tauri-plugin-macos-permissions`](https://github.com/ayangweb/tauri-plugin-macos-permissions),
+exposed to the renderer through the `permissions` bridge (`src/lib/tauri-bridge.ts`):
 
-- **Screen recording**: on macOS, probed indirectly by attempting an `xcap` screenshot
-  (`granted`/`denied`); on other platforms always reports `granted`. `permissions_check_screen_sources`
-  similarly probes via `xcap::Monitor::all()`.
-- **Microphone**: on macOS reports `not-determined` (no AVFoundation bindings to query the real
-  status); on other platforms reports `granted`. `permissions_request_microphone` always returns
-  `granted: false` with a note to use System Settings, since `getUserMedia()` is the actual
-  request path.
-- **Dialogs**: `permissions_show_denied_dialog` shows a native error dialog pointing the user at
-  System Settings > Privacy & Security; `permissions_show_restart_dialog` asks the user to
-  restart the app after granting a permission (needed because macOS only refreshes
-  `desktopCapturer`-equivalent state after a relaunch).
+- **Checks** (`checkMicrophone`, `checkScreenRecording`) use the plugin's native APIs
+  (`AVCaptureDevice.authorizationStatus`, `CGPreflightScreenCaptureAccess`) and return a bool.
+  Off macOS they return `true` (always granted).
+- **Requests** (`requestMicrophone`, `requestScreenRecording`) call
+  `AVCaptureDevice.requestAccess` / `CGRequestScreenCaptureAccess`, which trigger the native
+  prompt **and register the app in the System Settings Privacy lists**. The start flow checks,
+  then requests when not granted.
+- Screen recording gates both the system-audio loopback (ScreenCaptureKit) and the
+  coding-challenge screenshots (`xcap`). macOS applies a newly granted screen-recording grant
+  only after the app relaunches.
+
+`src-tauri/src/commands/permissions.rs` now only renders the guidance dialogs:
+`permissions_show_denied_dialog` shows a native error dialog with an "Open System Settings"
+button that deep-links to the relevant Privacy pane; `permissions_show_restart_dialog` asks the
+user to restart the app after granting a permission.
 
 ## Build and Release Workflow
 

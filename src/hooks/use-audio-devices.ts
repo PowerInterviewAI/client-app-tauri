@@ -1,14 +1,24 @@
 import { useEffect, useState } from 'react';
 
+import { getTauriApi, isMacPlatform } from '@/lib/utils';
 import { type AudioDevice } from '@/types/audio-device';
 
 /**
  * Whether the page already holds microphone permission, without triggering a prompt.
  *
- * Uses the Permissions API; on engines that don't support querying 'microphone'
- * (notably macOS WKWebView) this resolves to false so we never auto-prompt.
+ * macOS WKWebView doesn't support the Permissions API for 'microphone', so there we use the
+ * native check (tauri-plugin-macos-permissions, accurate on macOS). Elsewhere we use the web
+ * Permissions API, which reports the real state on Chromium/WebView2, so we never auto-prompt.
  */
 async function hasMicPermission(): Promise<boolean> {
+  if (isMacPlatform()) {
+    try {
+      const tauri = getTauriApi();
+      return tauri ? await tauri.permissions.checkMicrophone() : false;
+    } catch {
+      return false;
+    }
+  }
   try {
     const status = await navigator.permissions.query({
       name: 'microphone' as PermissionName,

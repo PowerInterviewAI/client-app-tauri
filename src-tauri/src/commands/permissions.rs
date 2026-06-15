@@ -1,45 +1,6 @@
-use serde_json::{json, Value};
-
-#[tauri::command]
-pub async fn permissions_check_screen_recording() -> Value {
-    #[cfg(target_os = "macos")]
-    {
-        let status = check_screen_recording_macos();
-        return json!({ "status": status });
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        json!({ "status": "granted" })
-    }
-}
-
-#[tauri::command]
-pub async fn permissions_check_screen_sources() -> Result<Value, String> {
-    // Attempt a screenshot as a proxy for screen recording permission
-    match xcap::Monitor::all() {
-        Ok(monitors) if !monitors.is_empty() => Ok(json!({ "granted": true })),
-        _ => Ok(json!({ "granted": false })),
-    }
-}
-
-#[tauri::command]
-pub async fn permissions_check_microphone() -> Value {
-    #[cfg(target_os = "macos")]
-    {
-        let status = check_microphone_macos();
-        return json!({ "status": status });
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        json!({ "status": "granted" })
-    }
-}
-
-#[tauri::command]
-pub async fn permissions_request_microphone() -> Value {
-    // On macOS this requires system API; prompt via shell open as fallback
-    json!({ "granted": false, "note": "Open System Settings to grant microphone access" })
-}
+// Microphone and screen-recording permission checks/requests are handled by
+// tauri-plugin-macos-permissions (accurate native APIs that also register the app in the
+// System Settings Privacy lists). The commands below only render the guidance dialogs.
 
 #[tauri::command]
 pub async fn permissions_show_denied_dialog(
@@ -97,23 +58,4 @@ pub async fn permissions_show_restart_dialog(app: tauri::AppHandle) -> Result<()
         .title("Restart Required")
         .blocking_show();
     Ok(())
-}
-
-#[cfg(target_os = "macos")]
-fn check_screen_recording_macos() -> &'static str {
-    // Use ScreenCaptureKit's own gate, the exact API the system-audio loopback relies on, so
-    // this check agrees with whether capture can actually run. xcap's screenshot path can
-    // report success via legacy CoreGraphics APIs even when ScreenCaptureKit is blocked, which
-    // previously produced a false "granted" and the endless "please restart" loop.
-    use screencapturekit::prelude::*;
-    match SCShareableContent::get() {
-        Ok(_) => "granted",
-        Err(_) => "denied",
-    }
-}
-
-#[cfg(target_os = "macos")]
-fn check_microphone_macos() -> &'static str {
-    // Without AVFoundation bindings, report unknown
-    "not-determined"
 }

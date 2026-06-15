@@ -46,6 +46,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_macos_permissions::init())
         .setup(|app| {
             let handle = app.handle().clone();
 
@@ -232,11 +233,7 @@ pub fn run() {
             commands::window_cmd::window_resize_by_arrow,
             commands::window_cmd::window_save_bounds,
             commands::window_cmd::window_start_drag,
-            // permissions
-            commands::permissions::permissions_check_screen_recording,
-            commands::permissions::permissions_check_screen_sources,
-            commands::permissions::permissions_check_microphone,
-            commands::permissions::permissions_request_microphone,
+            // permissions (checks/requests handled by tauri-plugin-macos-permissions)
             commands::permissions::permissions_show_denied_dialog,
             commands::permissions::permissions_show_restart_dialog,
             // external

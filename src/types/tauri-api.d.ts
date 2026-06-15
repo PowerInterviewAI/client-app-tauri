@@ -152,16 +152,12 @@ declare global {
       onChange: (callback: (percent: number) => void) => () => void;
     };
 
-    // macOS permission checks
+    // macOS permission checks (backed by tauri-plugin-macos-permissions; true off macOS)
     permissions: {
-      checkScreenRecording: () => Promise<
-        'not-determined' | 'denied' | 'granted' | 'restricted' | 'unknown'
-      >;
-      checkScreenSources: () => Promise<boolean>;
-      checkMicrophone: () => Promise<
-        'not-determined' | 'denied' | 'granted' | 'restricted' | 'unknown'
-      >;
-      requestMicrophone: () => Promise<boolean>;
+      checkScreenRecording: () => Promise<boolean>;
+      requestScreenRecording: () => Promise<void>;
+      checkMicrophone: () => Promise<boolean>;
+      requestMicrophone: () => Promise<void>;
       showDeniedDialog: (type: 'screen-recording' | 'microphone') => Promise<void>;
       showRestartDialog: () => Promise<void>;
     };

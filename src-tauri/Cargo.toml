@@ -19,6 +19,9 @@ tauri-plugin-dialog = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-updater = "2"
+# Accurate macOS permission checks/requests (microphone, screen recording). Builds on all
+# platforms: the check commands return `true` and requests no-op off macOS.
+tauri-plugin-macos-permissions = "2"
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

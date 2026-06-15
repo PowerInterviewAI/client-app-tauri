@@ -213,23 +213,19 @@ export const tauriApi = {
   },
 
   // ---- Permissions ----
-  // The Rust commands return objects ({ status } / { granted }); unwrap them here so
-  // callers receive the bare string/boolean the typed API (tauri-api.d.ts) promises.
+  // Checks/requests are backed by tauri-plugin-macos-permissions: accurate native state via
+  // CGPreflightScreenCaptureAccess / AVCaptureDevice. The request commands trigger the native
+  // prompt AND register the app in the System Settings Privacy lists. Off macOS the plugin's
+  // check commands return true, so these resolve to "granted" on Windows/Linux.
   permissions: {
     checkScreenRecording: () =>
-      invoke('permissions_check_screen_recording').then(
-        (r) => (r as { status?: string })?.status ?? 'unknown'
-      ),
-    checkScreenSources: () =>
-      invoke('permissions_check_screen_sources').then(
-        (r) => !!(r as { granted?: boolean })?.granted
-      ),
+      invoke('plugin:macos-permissions|check_screen_recording_permission').then((r) => !!r),
+    requestScreenRecording: () =>
+      invoke('plugin:macos-permissions|request_screen_recording_permission').then(() => undefined),
     checkMicrophone: () =>
-      invoke('permissions_check_microphone').then(
-        (r) => (r as { status?: string })?.status ?? 'unknown'
-      ),
+      invoke('plugin:macos-permissions|check_microphone_permission').then((r) => !!r),
     requestMicrophone: () =>
-      invoke('permissions_request_microphone').then((r) => !!(r as { granted?: boolean })?.granted),
+      invoke('plugin:macos-permissions|request_microphone_permission').then(() => undefined),
     showDeniedDialog: (type: 'screen-recording' | 'microphone') =>
       // Tauri v2 exposes the Rust `permission_type` arg to JS as camelCase `permissionType`.
       invoke('permissions_show_denied_dialog', { permissionType: type }),

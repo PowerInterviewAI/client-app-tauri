@@ -55,6 +55,16 @@ fn set_window_opacity(win: &tauri::WebviewWindow, opacity: f64) {
         let _ = (win, opacity);
     }
 }
+
+/// Apply window opacity on the main/UI thread. `set_window_opacity` calls AppKit
+/// (`setAlphaValue:`) and Win32 window APIs, which must run on the main thread; this is
+/// often invoked from the global-shortcut callback (a background thread), so marshal it.
+/// `run_on_main_thread` runs synchronously if already on the main thread.
+fn apply_window_opacity(win: &tauri::WebviewWindow, opacity: f64) {
+    let win = win.clone();
+    let handle = win.app_handle().clone();
+    let _ = handle.run_on_main_thread(move || set_window_opacity(&win, opacity));
+}
 use crate::services::app_state::AppStateService;
 use crate::services::push_notification::PushNotificationService;
 use crate::store::ConfigStore;
@@ -109,7 +119,7 @@ impl WindowControlService {
         let _ = win.set_ignore_cursor_events(true);
         let _ = win.set_always_on_top(true);
         // Apply the current window-opacity level when entering stealth.
-        set_window_opacity(&win, OPACITY_LEVELS[*self.opacity_index.lock()]);
+        apply_window_opacity(&win, OPACITY_LEVELS[*self.opacity_index.lock()]);
         *self.stealth.lock() = true;
         self.config_store.set_stealth(true);
         self.app_state.set_stealth(true);
@@ -129,7 +139,7 @@ impl WindowControlService {
         let Some(win) = self.window() else { return };
         let _ = win.set_ignore_cursor_events(false);
         let _ = win.set_always_on_top(false);
-        set_window_opacity(&win, 1.0);
+        apply_window_opacity(&win, 1.0);
         let _ = win.show();
         let _ = win.set_focus();
         *self.stealth.lock() = false;
@@ -174,7 +184,7 @@ impl WindowControlService {
         // Persist so the level is restored on the next launch / next stealth entry.
         self.config_store.save_opacity_level(level);
         // Apply the new opacity to the native window.
-        set_window_opacity(&win, OPACITY_LEVELS[level]);
+        apply_window_opacity(&win, OPACITY_LEVELS[level]);
     }
 
     pub fn set_stealth(&self, enabled: bool) {

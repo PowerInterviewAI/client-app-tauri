@@ -14,6 +14,24 @@ export const getCurrentTimestamp = () => {
   return Date.now();
 };
 
+/**
+ * Extract a human-readable message from an unknown thrown value.
+ *
+ * Tauri's `invoke()` rejects with the *raw value* a Rust command returns on error, so a
+ * command that returns `Err(String)` rejects with a bare string (not an `Error`). Code that
+ * only reads `error.message` silently drops those, surfacing a generic fallback instead of
+ * the real cause. This handles strings, `Error`s, and `{ message }`-shaped objects.
+ */
+export function getErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === 'string') return error || fallback;
+  if (error instanceof Error) return error.message || fallback;
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string' && message) return message;
+  }
+  return fallback;
+}
+
 export function isMacPlatform(): boolean {
   try {
     const nav =

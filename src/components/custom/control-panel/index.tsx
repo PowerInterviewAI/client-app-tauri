@@ -7,6 +7,7 @@ import { useAudioInputDevices } from '@/hooks/use-audio-devices';
 import { useConfigStore } from '@/hooks/use-config-store';
 import useIsStealthMode from '@/hooks/use-is-stealth-mode';
 import { useVideoDevices } from '@/hooks/use-video-devices';
+import { getErrorMessage } from '@/lib/utils';
 import { RunningState } from '@/types/app-state';
 
 import ZoomControl from '../zoom-control';
@@ -51,7 +52,7 @@ export default function ControlPanel({ onProfileClick, onSignOut }: ControlPanel
           console.log('Failed to start assistant:', error);
           // PermissionError: native dialog was already shown - skip the toast
           if ((error as { name?: string })?.name !== 'PermissionError') {
-            toast.error(error instanceof Error ? error.message : 'Failed to start assistant');
+            toast.error(getErrorMessage(error, 'Failed to start assistant'));
           }
           await stopAssistant();
         }

@@ -1,7 +1,7 @@
 ﻿import { create } from 'zustand';
 
 import { type VideoPanelHandle } from '@/components/custom/video-panel';
-import { getTauriApi } from '@/lib/utils';
+import { getErrorMessage, getTauriApi } from '@/lib/utils';
 import { liveTranscriptionService } from '@/services/live-transcription.service';
 import { RunningState } from '@/types/app-state';
 
@@ -95,7 +95,7 @@ export const useAssistantService = create<AssistantService>((set) => ({
         return;
       }
 
-      const errorMessage = error instanceof Error ? error.message : 'Failed to start assistant';
+      const errorMessage = getErrorMessage(error, 'Failed to start assistant');
       set({ error: errorMessage });
       console.error('Start assistant error:', error);
       throw error;
@@ -128,7 +128,7 @@ export const useAssistantService = create<AssistantService>((set) => ({
       // Update running state to Idle after successful stop
       tauri.appState.update({ runningState: RunningState.Idle });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to stop assistant';
+      const errorMessage = getErrorMessage(error, 'Failed to stop assistant');
       set({
         error: errorMessage,
       });

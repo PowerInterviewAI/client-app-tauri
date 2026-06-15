@@ -1,4 +1,4 @@
-import { getTauriApi } from '@/lib/utils';
+import { getTauriApi, isMacPlatform } from '@/lib/utils';
 
 const SAMPLE_RATE = 16000;
 const BYTES_PER_SAMPLE = 2; // 16-bit PCM
@@ -9,7 +9,7 @@ const WS_OPEN_TIMEOUT_MS = 5000;
 const WS_RETRY_MAX_ATTEMPTS = 5;
 const WS_RETRY_BASE_DELAY_MS = 1000;
 const WS_RETRY_MAX_DELAY_MS = 8000;
-const isMacOS = navigator.platform.toUpperCase().includes('MAC');
+const isMacOS = isMacPlatform();
 const BACKEND_BASE_URL =
   isMacOS || !import.meta.env.DEV ? 'https://api.powerinterviewai.com' : 'http://localhost:8080';
 const STREAMING_URL = `${BACKEND_BASE_URL.replace('http', 'ws')}/api/asr/streaming`;

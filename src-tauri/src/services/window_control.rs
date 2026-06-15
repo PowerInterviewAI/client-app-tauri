@@ -65,6 +65,51 @@ fn apply_window_opacity(win: &tauri::WebviewWindow, opacity: f64) {
     let handle = win.app_handle().clone();
     let _ = handle.run_on_main_thread(move || set_window_opacity(&win, opacity));
 }
+
+/// Re-apply the Dock icon after returning from `Accessory` to `Regular` activation policy.
+///
+/// AppKit rebuilds the Dock tile from `NSApp.applicationIconImage` (not the bundle's
+/// `CFBundleIconFile`) on that transition, so it drops our icon and shows the generic
+/// placeholder. We embed the app icon and set it explicitly. Must run on the main thread.
+///
+/// The `NSImage` is built once and cached for the process lifetime (the app icon is
+/// long-lived, so the single `alloc`/`init` reference is intentionally never released).
+#[cfg(target_os = "macos")]
+fn restore_dock_icon() {
+    use std::sync::OnceLock;
+
+    use objc2::runtime::AnyObject;
+    use objc2::{class, msg_send};
+
+    const ICON_BYTES: &[u8] = include_bytes!("../../icons/icon.png");
+    // Pointer stored as usize so it is Send; only ever touched on the main thread.
+    static ICON: OnceLock<usize> = OnceLock::new();
+
+    let image = *ICON.get_or_init(|| unsafe {
+        // NSData *data = [NSData dataWithBytes:length:] (autoreleased, not owned)
+        let data: *mut AnyObject = msg_send![
+            class!(NSData),
+            dataWithBytes: ICON_BYTES.as_ptr() as *const std::ffi::c_void,
+            length: ICON_BYTES.len()
+        ];
+        if data.is_null() {
+            return 0;
+        }
+        // NSImage *image = [[NSImage alloc] initWithData:data] (owned +1, kept forever)
+        let image: *mut AnyObject = msg_send![class!(NSImage), alloc];
+        let image: *mut AnyObject = msg_send![image, initWithData: data];
+        image as usize
+    }) as *mut AnyObject;
+
+    if image.is_null() {
+        return;
+    }
+    unsafe {
+        let app: *mut AnyObject = msg_send![class!(NSApplication), sharedApplication];
+        let _: () = msg_send![app, setApplicationIconImage: image];
+    }
+}
+
 use crate::services::app_state::AppStateService;
 use crate::services::push_notification::PushNotificationService;
 use crate::store::ConfigStore;
@@ -153,6 +198,9 @@ impl WindowControlService {
             let _ = self
                 .app_handle
                 .set_activation_policy(ActivationPolicy::Regular);
+            // Re-apply the Dock icon, which AppKit drops on the Accessory -> Regular
+            // transition. Marshal to the main thread (toggle may run on a shortcut thread).
+            let _ = self.app_handle.run_on_main_thread(restore_dock_icon);
         }
     }
 

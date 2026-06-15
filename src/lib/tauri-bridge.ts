@@ -258,27 +258,6 @@ listen<boolean>('stealth-changed', (event) => {
   }
 }).catch(() => {});
 
-// Background-opacity levels for stealth mode. The window is transparent and the
-// translucent backdrop is painted once (CSS), so there is a single background alpha;
-// text stays fully opaque. The index is chosen by the Rust opacity toggle
-// (window_control.rs OPACITY_LEVEL_COUNT must match this length).
-const STEALTH_ALPHA_LEVELS: number[] = [
-  0.3, // most transparent
-  0.6, // default (middle)
-  0.9, // most opaque
-];
-
-function applyStealthAlpha(index: number): void {
-  const alpha = STEALTH_ALPHA_LEVELS[index] ?? STEALTH_ALPHA_LEVELS[1];
-  document.documentElement.style.setProperty('--stealth-bg-alpha', String(alpha));
-}
-
-// The Rust side emits the current level index when stealth turns on and each time the
-// opacity hotkey is pressed.
-listen<number>('stealth-opacity-level', (event) => {
-  applyStealthAlpha(event.payload);
-}).catch(() => {});
-
 // Types for internal use
 interface TranscriptItem {
   timestamp: number;

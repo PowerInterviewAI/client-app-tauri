@@ -205,13 +205,13 @@ function ActionSuggestionsPanel({ actionSuggestions = [], style }: ActionSuggest
                             <img
                               key={i}
                               src={url}
-                              className="stealth-img-dim h-12 w-16 object-cover rounded-md border border-blue-400/30 bg-muted/30"
+                              className="h-12 w-16 object-cover rounded-md border border-blue-400 bg-muted"
                               alt={`thumb-${i}`}
                             />
                           ) : (
                             <div
                               key={i}
-                              className="h-12 w-16 flex items-center justify-center rounded-md border border-blue-400/30 bg-muted/30"
+                              className="h-12 w-16 flex items-center justify-center rounded-md border border-blue-400 bg-muted"
                             >
                               <ImageUp className="h-4 w-4 text-muted-foreground" />
                             </div>

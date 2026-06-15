@@ -227,21 +227,14 @@ aborts the in-flight request.
   toggles a `stealth` class on `<body>` (see `tauri-bridge.ts`), and `AppState.isStealth` /
   `ConfigStore` are updated. While in stealth, a compact `StatusPanel` is shown instead of the
   full `ControlPanel`.
-- **Translucency**: the main window is created `transparent` (per-pixel alpha; requires
-  `app.macOSPrivateApi` + the `macos-private-api` Cargo feature, which keeps the macOS build off
-  the App Store). Dimming is done in CSS rather than at the window level. To avoid opacity
-  accumulating across the overlapping panels (main > page > cards), stealth zeroes the
-  `bg-background`/`bg-card` *utilities* (not the tokens, so `text-background` etc. stay opaque)
-  and paints the translucent backdrop exactly once on the window-filling `<main>`
-  (`body.stealth` block in `index.css`). The result is two opacity levels only: fully opaque
-  text/icons (content panels use `text-foreground`, no alpha) over a single uniform translucent
-  background. Borders (`--border`) and images (`img`) follow the same `--stealth-bg-alpha` so the
-  overlay dims uniformly.
+- **Translucency**: dimming is applied to the native window itself, not in CSS. On Windows the
+  window is made `WS_EX_LAYERED` and `SetLayeredWindowAttributes` sets its alpha; on macOS the
+  `NSWindow`'s `setAlphaValue:` is used (both via `raw-window-handle`). The whole window
+  (background, text, borders, images) dims uniformly.
 - **Opacity toggle** (`window_toggle_opacity`, only while in stealth): `WindowControlService`
-  cycles an index over `OPACITY_LEVEL_COUNT` (3) and emits `stealth-opacity-level`; the bridge
-  maps it to the single `--stealth-bg-alpha` CSS variable (`STEALTH_ALPHA_LEVELS` in
-  `tauri-bridge.ts`, range `0.3-0.9`). The level is persisted to `config.window.opacityLevel`,
-  restored on launch, and re-applied (emitted) each time stealth is entered.
+  cycles an index over `OPACITY_LEVELS` (`[0.2, 0.5, 0.75, 0.9]`) and applies the selected alpha to the
+  native window (`set_window_opacity`). The level is persisted to `config.window.opacityLevel`,
+  restored on launch, and re-applied each time stealth is entered.
 - **Hotkeys panel**: stealth is click-through, so hover can't open it. `Ctrl+Shift+H` emits
   `hotkey-toggle-hotkeys`, which `StatusPanel` (`onHotkeyToggleHotkeys` in the bridge) uses to
   toggle a centered modal listing the shortcuts (normal, non-inverted theme).

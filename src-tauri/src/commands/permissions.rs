@@ -43,7 +43,7 @@ pub async fn permissions_request_microphone() -> Value {
 
 #[tauri::command]
 pub async fn permissions_show_denied_dialog(
-    permission_type: String, // matches snake_case from bridge
+    permission_type: String, // sent from JS as camelCase `permissionType` (Tauri v2)
     app: tauri::AppHandle,
 ) -> Result<(), String> {
     use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};

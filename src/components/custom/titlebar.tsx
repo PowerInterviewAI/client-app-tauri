@@ -69,7 +69,10 @@ export default function Titlebar() {
     <>
       <div
         id="titlebar"
-        data-tauri-drag-region="deep"
+        // On macOS the native title bar (Overlay style) handles window dragging and
+        // double-click zoom, so we omit the webview drag region there to avoid duplicating
+        // it. Windows is borderless with no native title bar, so it keeps the drag region.
+        {...(isMac ? {} : { 'data-tauri-drag-region': 'deep' })}
         style={{ paddingLeft: macPaddingLeft }}
         className="flex items-center gap-3 h-9 pr-1 pl-1 select-none bg-card border-b border-border"
       >

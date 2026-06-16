@@ -17,6 +17,7 @@ import { useAssistantService } from '@/hooks/use-assistant-service';
 import useAuth from '@/hooks/use-auth';
 import { useConfigStore } from '@/hooks/use-config-store';
 import useIsStealthMode from '@/hooks/use-is-stealth-mode';
+import { useWarmUpPermissions } from '@/hooks/use-warm-up-permissions';
 import { RunningState, UserRole } from '@/types/app-state';
 import { type ActionSuggestion, type LiveSuggestion } from '@/types/suggestion';
 import { type Transcript } from '@/types/transcript';
@@ -41,6 +42,10 @@ export default function MainPage() {
 
   // App state from context
   const { appState } = useAppState();
+
+  // Warm up OS permissions (mic on both platforms; screen recording on macOS) once the user is
+  // logged in, so prompts happen up front instead of mid-interview.
+  useWarmUpPermissions(appState?.isLoggedIn === true);
 
   // Register videoPanelRef with assistant state
   useEffect(() => {

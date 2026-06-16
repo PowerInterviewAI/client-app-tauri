@@ -106,7 +106,8 @@ export default function Titlebar() {
                   onClick={handleToggleStealth}
                   aria-label="Toggle stealth mode"
                   title="Toggle stealth mode"
-                  className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted"                >
+                  className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted"
+                >
                   <EyeOff className="h-4 w-4" />
                 </button>
               </TooltipTrigger>
@@ -120,7 +121,8 @@ export default function Titlebar() {
               <button
                 onClick={() => toggleTheme()}
                 aria-label="Toggle theme"
-                className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted"              >
+                className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted"
+              >
                 {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </button>
             </TooltipTrigger>
@@ -134,7 +136,8 @@ export default function Titlebar() {
               <button
                 onClick={() => setIsDocsOpen(true)}
                 aria-label="Documentation"
-                className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted"              >
+                className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted"
+              >
                 <span className="font-medium">?</span>
               </button>
             </TooltipTrigger>
@@ -150,7 +153,8 @@ export default function Titlebar() {
                   <button
                     onClick={handleMinimize}
                     aria-label="Minimize"
-                    className="h-7 w-12 flex items-center justify-center rounded hover:bg-muted"                  >
+                    className="h-7 w-12 flex items-center justify-center rounded hover:bg-muted"
+                  >
                     <Minus className="h-4 w-4" />
                   </button>
                 </TooltipTrigger>
@@ -164,7 +168,8 @@ export default function Titlebar() {
                   <button
                     onClick={handleToggleMaximize}
                     aria-label="Maximize"
-                    className="h-7 w-12 flex items-center justify-center rounded hover:bg-muted"                  >
+                    className="h-7 w-12 flex items-center justify-center rounded hover:bg-muted"
+                  >
                     <Square className="h-3.5 w-3.5" />
                   </button>
                 </TooltipTrigger>
@@ -178,7 +183,8 @@ export default function Titlebar() {
                   <button
                     onClick={handleClose}
                     aria-label="Close"
-                    className="h-7 w-12 flex items-center justify-center rounded hover:bg-destructive/50"                  >
+                    className="h-7 w-12 flex items-center justify-center rounded hover:bg-destructive/50"
+                  >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       className="h-4 w-4"

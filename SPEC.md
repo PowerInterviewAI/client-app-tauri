@@ -35,20 +35,20 @@ backend) that assists a candidate during a live interview. While running it:
 utilities. All long-lived services are constructed once in `lib.rs::run()` and stored as
 `AppServices` (Tauri managed state), then injected into command handlers via `State<AppServices>`:
 
-| Service | Responsibility |
-| --- | --- |
-| `ConfigStore` | Persists `RuntimeConfig` (profile, credentials, device/LLM prefs) and window settings to `config.json` in the app data dir. |
-| `AppStateService` | Holds the single `AppState` struct and emits `app-state-updated` on every change. |
-| `TranscriptService` | Aggregates/merges mic (`ch_1`) and loopback (`ch_0`) transcripts, triggers live suggestions. |
-| `LiveSuggestionService` | Streams automatic answer suggestions from the backend LLM. |
-| `ActionSuggestionService` | Handles screenshot capture/upload and on-demand suggestion generation. |
-| `ActionLockService` | Prevents overlapping screenshot/suggestion actions (two atomic locks). |
-| `LoopbackService` | Native system-audio capture and streaming (Windows/macOS). |
-| `ToolsService` | Transcript export support, "clear all", placeholder/demo data. |
-| `WindowControlService` | Stealth mode, opacity cycling, window positioning/resizing. |
-| `ZoomService` | Webview zoom level, persisted and clamped. |
-| `PushNotificationService` | Emits `push-notification` events shown as toasts. |
-| `HealthCheckService` | Polls backend liveness and (if logged in) credits/role/plan. |
+| Service                   | Responsibility                                                                                                              |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `ConfigStore`             | Persists `RuntimeConfig` (profile, credentials, device/LLM prefs) and window settings to `config.json` in the app data dir. |
+| `AppStateService`         | Holds the single `AppState` struct and emits `app-state-updated` on every change.                                           |
+| `TranscriptService`       | Aggregates/merges mic (`ch_1`) and loopback (`ch_0`) transcripts, triggers live suggestions.                                |
+| `LiveSuggestionService`   | Streams automatic answer suggestions from the backend LLM.                                                                  |
+| `ActionSuggestionService` | Handles screenshot capture/upload and on-demand suggestion generation.                                                      |
+| `ActionLockService`       | Prevents overlapping screenshot/suggestion actions (two atomic locks).                                                      |
+| `LoopbackService`         | Native system-audio capture and streaming (Windows/macOS).                                                                  |
+| `ToolsService`            | Transcript export support, "clear all", placeholder/demo data.                                                              |
+| `WindowControlService`    | Stealth mode, opacity cycling, window positioning/resizing.                                                                 |
+| `ZoomService`             | Webview zoom level, persisted and clamped.                                                                                  |
+| `PushNotificationService` | Emits `push-notification` events shown as toasts.                                                                           |
+| `HealthCheckService`      | Polls backend liveness and (if logged in) credits/role/plan.                                                                |
 
 - `src-tauri/tauri.conf.json` - window, bundle, and updater settings for macOS/Windows.
 - `src-tauri/Cargo.toml` - Rust dependency manifest (notable: `reqwest` for REST + streaming,
@@ -94,7 +94,7 @@ deep-merge so partial updates from the renderer only touch the fields they inclu
 ## Authentication, Session & Health Check
 
 - `AuthService` (`src-tauri/src/services/auth.rs`) wraps `/api/auth/{signup,login,logout,
-  change-password}`. On signup/login success, the returned `session_token` (or `access_token`)
+change-password}`. On signup/login success, the returned `session_token` (or `access_token`)
   is written into `RuntimeConfig.sessionToken`. Logout clears the token.
 - `HealthCheckService` starts once at app launch (`lib.rs` setup):
   - Sets `isLoggedIn = null` (unknown) initially.
@@ -208,7 +208,7 @@ locks (`ScreenshotCapture`, `CaptureSuggestion`) so the candidate can't double-t
 - **Clear images** (`action_clear_images` / hotkey F10): drops the queued screenshots.
 - **Generate suggestion** (`action_start_generate` / hotkey F11): aborts any in-flight
   generation, drains the queued image names, and POSTs `{ config, profile_data, context,
-  transcripts, image_names }` to `/api/llm/action-suggestion`, streaming the answer the same way
+transcripts, image_names }` to `/api/llm/action-suggestion`, streaming the answer the same way
   as live suggestions (`pending -> loading -> success/stopped/error`, no `NO_SUGGESTION_NEEDED`
   sentinel).
 - **Capture + generate** (hotkey F12): captures a screenshot first only if none are already
@@ -262,22 +262,22 @@ Registered once at startup (`lib.rs::register_hotkeys`). Most are `Ctrl+Shift+<k
 move/resize bindings add `Alt` / `Win` respectively and are distinguished by modifier in the
 handler:
 
-| Hotkey | Action |
-| --- | --- |
-| `Q` | Emit `hotkey-stop-assistant` (renderer calls `stopAssistant()`). |
-| `M` | Toggle stealth mode. |
-| `N` | Toggle opacity (stealth only). |
-| `H` | Show/hide the hotkeys panel (stealth is click-through, so this replaces hover). |
-| `=` / `-` / `0` | Zoom in / out / reset. |
-| `K` / `J` / `L` | Scroll live-suggestions panel up / down / to end (`hotkey-scroll`, section `"0"`). |
-| `I` / `U` / `O` | Scroll action-suggestions panel up / down / to end (`hotkey-scroll`, section `"1"`). |
-| `F9` | Capture screenshot for action suggestions. |
-| `F10` | Clear queued screenshot images. |
-| `F11` | Generate an action suggestion from queued images + transcript. |
-| `F12` | Capture a screenshot (if none queued) then generate an action suggestion. |
-| `1`-`9` | Move the window to one of nine screen positions (bottom/middle/top x left/center/right). |
-| `Ctrl+Alt+Shift+Arrow` | Move the window 20px in the arrow direction; hold to repeat (`move_by_arrow`). |
-| `Ctrl+Win+Shift+Arrow` | Resize the window 20px in the arrow direction; hold to repeat (`resize_by_arrow`). |
+| Hotkey                 | Action                                                                                   |
+| ---------------------- | ---------------------------------------------------------------------------------------- |
+| `Q`                    | Emit `hotkey-stop-assistant` (renderer calls `stopAssistant()`).                         |
+| `M`                    | Toggle stealth mode.                                                                     |
+| `N`                    | Toggle opacity (stealth only).                                                           |
+| `H`                    | Show/hide the hotkeys panel (stealth is click-through, so this replaces hover).          |
+| `=` / `-` / `0`        | Zoom in / out / reset.                                                                   |
+| `K` / `J` / `L`        | Scroll live-suggestions panel up / down / to end (`hotkey-scroll`, section `"0"`).       |
+| `I` / `U` / `O`        | Scroll action-suggestions panel up / down / to end (`hotkey-scroll`, section `"1"`).     |
+| `F9`                   | Capture screenshot for action suggestions.                                               |
+| `F10`                  | Clear queued screenshot images.                                                          |
+| `F11`                  | Generate an action suggestion from queued images + transcript.                           |
+| `F12`                  | Capture a screenshot (if none queued) then generate an action suggestion.                |
+| `1`-`9`                | Move the window to one of nine screen positions (bottom/middle/top x left/center/right). |
+| `Ctrl+Alt+Shift+Arrow` | Move the window 20px in the arrow direction; hold to repeat (`move_by_arrow`).           |
+| `Ctrl+Win+Shift+Arrow` | Resize the window 20px in the arrow direction; hold to repeat (`resize_by_arrow`).       |
 
 ## Assistant Lifecycle
 
@@ -337,7 +337,7 @@ running", max screenshots reached, upload failures).
   `https://github.com/PowerInterviewAI/client-app/releases/latest/download/latest.json`). If an
   update is available, it is **downloaded but not installed**, and the bytes are held in a
   process-wide `PENDING_UPDATE` static. Emits `auto-updater:status` with `{ status: "downloaded",
-  version }` or `{ status: "error", error }`.
+version }` or `{ status: "error", error }`.
 - `updater_quit_and_install` (user-triggered, e.g. from `UpdateNotification`) saves the current
   window bounds (since the install step bypasses the normal close handler), then calls
   `update.install(bytes)`. On Windows this exits the process immediately and the installer

@@ -73,9 +73,7 @@ function TranscriptPanel({ transcripts, style }: TranscriptionPanelProps) {
                     {new Date(item.timestamp).toLocaleString()}
                   </span>
                 </div>
-                <div className="text-sm text-foreground leading-relaxed text-wrap">
-                  {item.text}
-                </div>
+                <div className="text-sm text-foreground leading-relaxed text-wrap">{item.text}</div>
               </div>
             ))}
             {/* This invisible div acts as scroll target */}

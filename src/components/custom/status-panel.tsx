@@ -86,7 +86,9 @@ export default function StatusPanel({ runningState, llmModel, credits }: Props) 
                           <div className="rounded px-1.5 py-0.5 text-[11px] font-medium bg-muted text-foreground">
                             {formatHotkey(info)}
                           </div>
-                          <div className="text-[11px] font-medium text-foreground">{info.title}</div>
+                          <div className="text-[11px] font-medium text-foreground">
+                            {info.title}
+                          </div>
                         </div>
                       );
                     })}

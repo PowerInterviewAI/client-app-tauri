@@ -10,7 +10,14 @@
 // Env: TAG (e.g. v1.5.2), VERSION (e.g. 1.5.2), CHANGES (optional),
 //      GITHUB_REPOSITORY (e.g. PowerInterviewAI/client-app, set by Actions).
 
-import { readFileSync, writeFileSync, appendFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import {
+  readFileSync,
+  writeFileSync,
+  appendFileSync,
+  readdirSync,
+  statSync,
+  existsSync,
+} from 'node:fs';
 import { basename, join } from 'node:path';
 
 const { TAG, VERSION, CHANGES, GITHUB_REPOSITORY } = process.env;

@@ -62,7 +62,11 @@ class AudioWsStream {
       channel: Channel;
       type: 'partial' | 'final';
       text: string;
-    }) => Promise<void>
+    }) => Promise<void>,
+    // Session token sent as a query param for WS auth. Browser WebSockets can't set headers,
+    // and WKWebView (macOS release) blocks the cross-site session_token cookie, so relying on
+    // the cookie alone 401s there; the query param is webview-proof.
+    private readonly token: string
   ) {}
 
   async start() {
@@ -177,10 +181,13 @@ class AudioWsStream {
 
   private connectWebSocket(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      // Browser WebSocket can't set custom headers, so auth relies on the
-      // `session_token` cookie set in the webview's cookie jar (see
-      // transcription_set_session_token in the Rust backend).
-      const ws = new WebSocket(STREAMING_URL);
+      // Browser WebSocket can't set custom headers. Auth via the `session_token` cookie is
+      // unreliable in WKWebView (cross-site cookies are blocked), so pass the token as a query
+      // param (the backend accepts it). The cookie is still set as a fallback.
+      const url = this.token
+        ? `${STREAMING_URL}?token=${encodeURIComponent(this.token)}`
+        : STREAMING_URL;
+      const ws = new WebSocket(url);
       this.ws = ws;
       let settled = false;
 
@@ -317,7 +324,7 @@ class LiveTranscriptionService {
         await tauri.transcription.ingest(payload);
       };
 
-      const micChannel = new AudioWsStream('ch_1', this.micStream, onTranscript);
+      const micChannel = new AudioWsStream('ch_1', this.micStream, onTranscript, sessionToken);
       this.channels = [micChannel];
       await micChannel.start();
     } catch (err) {

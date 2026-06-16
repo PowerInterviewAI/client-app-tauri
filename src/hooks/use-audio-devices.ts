@@ -29,6 +29,14 @@ async function hasMicPermission(): Promise<boolean> {
   }
 }
 
+// Poll interval for hot-plug detection. The `devicechange` event is unreliable in WKWebView
+// (often never fires on macOS), so we also poll and diff to catch plug/unplug there.
+const DEVICE_POLL_MS = 2500;
+
+function sameDevices(a: AudioDevice[], b: AudioDevice[]): boolean {
+  return a.length === b.length && a.every((d, i) => d.name === b[i].name);
+}
+
 function useAudioDevices(kind: 'audioinput' | 'audiooutput', deviceType: string) {
   const [devices, setDevices] = useState<AudioDevice[]>([]);
 
@@ -75,22 +83,25 @@ function useAudioDevices(kind: 'audioinput' | 'audiooutput', deviceType: string)
             name: device.label || `${deviceType} Device ${index + 1}`,
             index,
           }));
-        setDevices(filtered);
+        // Only update when the list actually changed, so polling doesn't churn re-renders.
+        setDevices((prev) => (sameDevices(prev, filtered) ? prev : filtered));
       } catch (error) {
         console.error(`Error enumerating ${kind} devices:`, error);
       }
     }
 
     enumerate();
-    // Refresh on hot-plug (devicechange) and when the window regains focus, e.g. after the
-    // user returns from granting permission in System Settings.
+    // Refresh on hot-plug (devicechange), on window focus (e.g. returning from System Settings),
+    // and via polling, since devicechange is unreliable in WKWebView.
     navigator.mediaDevices.addEventListener('devicechange', enumerate);
     window.addEventListener('focus', enumerate);
+    const poll = window.setInterval(enumerate, DEVICE_POLL_MS);
 
     return () => {
       cancelled = true;
       navigator.mediaDevices.removeEventListener('devicechange', enumerate);
       window.removeEventListener('focus', enumerate);
+      window.clearInterval(poll);
     };
   }, [kind, deviceType]);
 

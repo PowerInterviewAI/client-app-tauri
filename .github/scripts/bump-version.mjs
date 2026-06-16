@@ -51,7 +51,13 @@ for (const file of [PACKAGE_JSON, TAURI_CONF]) {
     console.error(`Could not find [package] section in ${CARGO_TOML}`);
     process.exit(1);
   }
-  const updatedSection = replaceVersionLine(packageSection[0], /version\s*=\s*"[^"]+"/, CARGO_TOML);
+  // Anchor to the start of a line so we never match the `version` substring of another key
+  // (e.g. `rust-version = "..."`) if fields are reordered or added to [package].
+  const updatedSection = replaceVersionLine(
+    packageSection[0],
+    /^version\s*=\s*"[^"]+"/m,
+    CARGO_TOML
+  );
   writeFileSync(CARGO_TOML, content.replace(packageSection[0], updatedSection));
 }
 

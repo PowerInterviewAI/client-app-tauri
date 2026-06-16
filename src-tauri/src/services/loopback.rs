@@ -501,15 +501,16 @@ mod capture {
         let Some(ctx) = ctx else {
             return os::Status::NO_ERR;
         };
+        // Bail out before doing any work once a stop has been requested.
+        if ctx.stop.load(Ordering::Acquire) {
+            return os::Status::NO_ERR;
+        }
         ctx.sample_rate.store(
             device
                 .actual_sample_rate()
                 .unwrap_or(ctx.format.absd().sample_rate) as u32,
             Ordering::Release,
         );
-        if ctx.stop.load(Ordering::Acquire) {
-            return os::Status::NO_ERR;
-        }
         // The tap is a mono global tap, so buffer 0 is the mono system-audio signal.
         if let Some(view) = av::AudioPcmBuf::with_buf_list_no_copy(&ctx.format, input_data, None) {
             if let Some(data) = view.data_f32_at(0) {
@@ -580,9 +581,18 @@ mod capture {
             &[ca::sub_device_keys::uid()],
             &[output_uid.as_type_ref()],
         );
+        // Read the tap UID up front; never unwrap, since a panic here aborts the whole
+        // process (the release profile uses panic = "abort").
+        let tap_uid = match tap.uid() {
+            Ok(uid) => uid,
+            Err(e) => {
+                let _ = setup_tx.send(Err(format!("Failed to read system-audio tap UID: {e}")));
+                return;
+            }
+        };
         let sub_tap = cf::DictionaryOf::with_keys_values(
             &[ca::sub_device_keys::uid()],
-            &[tap.uid().unwrap().as_type_ref()],
+            &[tap_uid.as_type_ref()],
         );
         let agg_desc = cf::DictionaryOf::with_keys_values(
             &[
@@ -656,7 +666,16 @@ mod capture {
             std::thread::sleep(Duration::from_millis(50));
         }
 
-        drop(started);
+        // Teardown order matters and must be synchronous to avoid a use-after-free:
+        // `StartedDevice::stop` calls `AudioDeviceStop`, which removes the IO proc from the
+        // audio cycle and blocks until any in-flight callback returns, so the boxed `ctx`
+        // (dereferenced by `proc`) is safe to free only after this returns. Dropping the
+        // returned aggregate device then destroys it, and the tap is destroyed last because
+        // the aggregate device references it.
+        match started.stop() {
+            Ok(agg_device) => drop(agg_device),
+            Err(e) => log::error!("[Loopback] Failed to stop system-audio device: {e}"),
+        }
         drop(ctx);
         drop(tap);
     }

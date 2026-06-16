@@ -83,8 +83,8 @@ pub fn transcription_set_session_token(
 
 /// Start native system-audio (loopback) capture and streaming for the `ch_0`
 /// (interviewer) channel. Capture runs in the Rust backend: WASAPI loopback on Windows,
-/// ScreenCaptureKit on macOS. Returns an error if the device is unavailable or the OS
-/// permission (macOS screen recording) is denied.
+/// CoreAudio process taps on macOS. Returns an error if the device is unavailable or the OS
+/// permission (macOS system-audio capture) is denied.
 #[tauri::command]
 pub fn enable_loopback_audio(services: State<'_, AppServices>) -> Result<(), String> {
     services.loopback.start()

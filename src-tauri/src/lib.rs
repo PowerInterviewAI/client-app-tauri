@@ -156,13 +156,13 @@ pub fn run() {
             // Register global hotkeys
             register_hotkeys(&handle);
 
-            // Periodic update checks: first at t=3s, then every 4 hours.
+            // Periodic update checks: first at t=3s, then every 5 minutes.
             let handle_update = handle.clone();
             tauri::async_runtime::spawn(async move {
                 use tokio::time::{interval_at, Duration, Instant};
                 let mut ticker = interval_at(
                     Instant::now() + Duration::from_secs(3),
-                    Duration::from_secs(4 * 3600),
+                    Duration::from_secs(5 * 60),
                 );
                 loop {
                     ticker.tick().await;

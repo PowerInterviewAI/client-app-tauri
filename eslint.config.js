@@ -7,7 +7,7 @@ import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import { defineConfig, globalIgnores } from 'eslint/config';
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'src-tauri/target', '**/target/**', 'public/assets', '**/generated/**']),
   {
     files: ['**/*.{ts,tsx}'],
     plugins: {

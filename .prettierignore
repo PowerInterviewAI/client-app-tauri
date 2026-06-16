@@ -9,4 +9,6 @@ out
 coverage
 .cache
 public/assets
+src-tauri/target
+**/target/**
 **/generated/**

@@ -53,7 +53,7 @@ export function ToolsGroup({ getDisabled }: ToolsGroupProps) {
         // Give the user time to use the open buttons before the toast dismisses.
         duration: 10000,
         action: (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center ml-auto gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button

@@ -1,3 +1,4 @@
+import { Loader } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -17,7 +18,6 @@ import useAuth from '@/hooks/use-auth';
 import { useConfigStore } from '@/hooks/use-config-store';
 import useIsStealthMode from '@/hooks/use-is-stealth-mode';
 import { RunningState, UserRole } from '@/types/app-state';
-import { Loader } from 'lucide-react';
 import { type ActionSuggestion, type LiveSuggestion } from '@/types/suggestion';
 import { type Transcript } from '@/types/transcript';
 
@@ -264,13 +264,13 @@ export default function MainPage() {
         onSignOut={handleSignOut}
       />
 
-      {isStealth && (
-        <StatusPanel
-          runningState={appState?.runningState ?? RunningState.Idle}
-          credits={appState?.credits ?? 0}
-          llmModel={config?.llmConf?.model ?? appState?.providedLlmModel ?? ''}
-        />
-      )}
+      {/* Always mounted: the hotkeys panel (Ctrl+Shift+H) works in both modes; the status HUD
+          row inside only renders in stealth. */}
+      <StatusPanel
+        runningState={appState?.runningState ?? RunningState.Idle}
+        credits={appState?.credits ?? 0}
+        llmModel={config?.llmConf?.model ?? appState?.providedLlmModel ?? ''}
+      />
 
       <ConfigurationDialog isOpen={isProfileOpen} onOpenChange={setIsProfileOpen} />
 

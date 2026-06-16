@@ -228,6 +228,7 @@ pub fn run() {
             commands::window_cmd::window_set_stealth,
             commands::window_cmd::window_toggle_stealth,
             commands::window_cmd::window_toggle_opacity,
+            commands::window_cmd::window_set_hotkeys_overlay,
             commands::window_cmd::window_move_to_position,
             commands::window_cmd::window_move_by_arrow,
             commands::window_cmd::window_resize_by_arrow,

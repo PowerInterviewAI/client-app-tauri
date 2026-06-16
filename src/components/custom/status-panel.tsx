@@ -2,8 +2,8 @@ import { Keyboard } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import CreditsDisplay from '@/components/custom/credits-display';
-import { Hotkey, HOTKEY_GROUPS, HOTKEYS, formatHotkey } from '@/lib/hotkeys';
-import { cn } from '@/lib/utils';
+import useIsStealthMode from '@/hooks/use-is-stealth-mode';
+import { formatHotkey, Hotkey, HOTKEY_GROUPS, HOTKEYS } from '@/lib/hotkeys';
 import { RunningState } from '@/types/app-state';
 
 import { RunningIndicator } from './running-indicator';
@@ -15,9 +15,9 @@ type Props = {
 };
 
 export default function StatusPanel({ runningState, llmModel, credits }: Props) {
-  // In stealth the window is click-through (set_ignore_cursor_events), so the webview
-  // never receives hover/click events. The Ctrl+Shift+H global hotkey toggles the
-  // centered hotkeys modal below (the button is just a visible affordance).
+  // The hotkeys panel works in both modes: the Ctrl+Shift+H global hotkey toggles it. The status
+  // row (running indicator + credits + button) is a stealth-only HUD.
+  const isStealth = useIsStealthMode();
   const [showHotkeys, setShowHotkeys] = useState(false);
 
   useEffect(() => {
@@ -25,25 +25,45 @@ export default function StatusPanel({ runningState, llmModel, credits }: Props) 
     return window.tauriApi.onHotkeyToggleHotkeys(() => setShowHotkeys((v) => !v));
   }, []);
 
+  // Raise window opacity while the modal is open so it stays readable if the window is dimmed,
+  // then restore on close. Handled natively and works in any mode.
+  useEffect(() => {
+    window?.tauriApi?.setHotkeysOverlay?.(showHotkeys);
+  }, [showHotkeys]);
+
   return (
-    <div id="status-panel" className="flex items-center justify-between text-muted-foreground p-1">
-      <RunningIndicator runningState={runningState} />
-      <CreditsDisplay credits={credits} llmModel={llmModel} className="ml-2" />
-      <div className="flex-1" />
-      <button
-        onClick={() => setShowHotkeys((v) => !v)}
-        className="h-6 flex items-center justify-center rounded border border-border/50 text-muted-foreground bg-muted/50 text-xs font-bold gap-1 px-2"
-        aria-label="Hotkeys"
-        title={`Show keyboard shortcuts (${formatHotkey(HOTKEYS[Hotkey.ToggleHotkeys])})`}
-      >
-        <Keyboard className="h-4 w-4" /> Show Hotkeys (
-        {formatHotkey(HOTKEYS[Hotkey.ToggleHotkeys])})
-      </button>
+    <>
+      {isStealth && (
+        <div
+          id="status-panel"
+          className="flex items-center justify-between text-muted-foreground p-1"
+        >
+          <RunningIndicator runningState={runningState} />
+          <CreditsDisplay credits={credits} llmModel={llmModel} className="ml-2" />
+          <div className="flex-1" />
+          <button
+            onClick={() => setShowHotkeys((v) => !v)}
+            className="h-6 flex items-center justify-center rounded border border-border/50 text-muted-foreground bg-muted/50 text-xs font-bold gap-1 px-2"
+            aria-label="Hotkeys"
+            title={`Show keyboard shortcuts (${formatHotkey(HOTKEYS[Hotkey.ToggleHotkeys])})`}
+          >
+            <Keyboard className="h-4 w-4" /> Show Hotkeys (
+            {formatHotkey(HOTKEYS[Hotkey.ToggleHotkeys])})
+          </button>
+        </div>
+      )}
 
       {showHotkeys && (
         // Centered modal. Uses the normal (non-inverted) theme so it doesn't look reversed.
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-[92%] max-w-4xl rounded-lg border border-border bg-popover text-popover-foreground p-4 shadow-xl">
+        // Click the backdrop to close (works in normal mode; stealth is click-through).
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setShowHotkeys(false)}
+        >
+          <div
+            className="w-[92%] max-w-4xl rounded-lg border border-border bg-popover text-popover-foreground p-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="mb-3 flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <Keyboard className="h-4 w-4" /> Keyboard Shortcuts
@@ -66,9 +86,7 @@ export default function StatusPanel({ runningState, llmModel, credits }: Props) 
                           <div className="rounded px-1.5 py-0.5 text-[11px] font-medium bg-muted text-foreground">
                             {formatHotkey(info)}
                           </div>
-                          <div className="text-[11px] font-medium text-foreground">
-                            {info.title}
-                          </div>
+                          <div className="text-[11px] font-medium text-foreground">{info.title}</div>
                         </div>
                       );
                     })}
@@ -79,6 +97,6 @@ export default function StatusPanel({ runningState, llmModel, credits }: Props) 
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

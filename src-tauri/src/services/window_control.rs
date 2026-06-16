@@ -117,6 +117,8 @@ use crate::store::ConfigStore;
 // Window-opacity levels the stealth toggle cycles through. Dimming is applied to the
 // native window itself (set_window_opacity), so these are the actual alpha values.
 const OPACITY_LEVELS: [f64; 4] = [0.2, 0.5, 0.75, 0.9];
+/// Opacity applied while the hotkeys modal is open in stealth, so it stays readable.
+const HOTKEYS_OVERLAY_OPACITY: f64 = 0.9;
 const MOVE_AMOUNT: i32 = 20;
 const RESIZE_AMOUNT: i32 = 20;
 
@@ -241,6 +243,22 @@ impl WindowControlService {
         } else {
             self.disable_stealth()
         }
+    }
+
+    /// Keep the hotkeys modal readable under stealth dimming: raise opacity to
+    /// `HOTKEYS_OVERLAY_OPACITY` while it is open, then restore the saved stealth level when it
+    /// closes. No-op outside stealth, where the window is already fully opaque.
+    pub fn set_hotkeys_overlay(&self, open: bool) {
+        if !*self.stealth.lock() {
+            return;
+        }
+        let Some(win) = self.window() else { return };
+        let opacity = if open {
+            HOTKEYS_OVERLAY_OPACITY
+        } else {
+            OPACITY_LEVELS[*self.opacity_index.lock()]
+        };
+        apply_window_opacity(&win, opacity);
     }
 
     pub fn move_to_position(&self, position: &str) {

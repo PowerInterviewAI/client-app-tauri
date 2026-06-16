@@ -171,6 +171,9 @@ declare global {
 
     // Opacity toggle helper
     toggleOpacity: () => void;
+
+    // Raise window opacity while the hotkeys modal is open (stealth readability)
+    setHotkeysOverlay: (open: boolean) => void;
   }
 
   interface Window {

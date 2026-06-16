@@ -65,6 +65,11 @@ pub fn window_toggle_opacity(services: State<'_, AppServices>) {
 }
 
 #[tauri::command]
+pub fn window_set_hotkeys_overlay(open: bool, services: State<'_, AppServices>) {
+    services.window_control.set_hotkeys_overlay(open);
+}
+
+#[tauri::command]
 pub fn window_move_to_position(position: String, services: State<'_, AppServices>) {
     services.window_control.move_to_position(&position);
 }

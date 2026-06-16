@@ -239,6 +239,8 @@ export const tauriApi = {
   setStealth: (isStealth: boolean) => invoke('window_set_stealth', { isStealth }),
   toggleStealth: () => invoke('window_toggle_stealth'),
   toggleOpacity: () => invoke('window_toggle_opacity'),
+  // Keep the hotkeys modal readable under stealth dimming (raises opacity while open).
+  setHotkeysOverlay: (open: boolean) => invoke('window_set_hotkeys_overlay', { open }),
 
   // ---- Drag ----
   startDrag: () => invoke('window_start_drag'),

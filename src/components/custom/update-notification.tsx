@@ -15,15 +15,11 @@ export function UpdateNotification() {
     const { version } = updateStatus;
 
     toast.success(`Update ready${version ? `: v${version}` : ''}`, {
-      description: 'Restart to apply the update.',
+      description: 'Restart now to apply the update.',
       duration: Infinity,
       action: {
         label: 'Restart now',
         onClick: () => quitAndInstall(),
-      },
-      cancel: {
-        label: 'Later',
-        onClick: () => toast.info('Restart anytime to apply the update.'),
       },
     });
   }, [updateStatus, quitAndInstall]);

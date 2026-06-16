@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Hotkey, HOTKEY_GROUPS, HOTKEYS, formatHotkey } from '@/lib/hotkeys';
+import { formatHotkey, Hotkey, HOTKEY_GROUPS, HOTKEYS } from '@/lib/hotkeys';
 import { cn } from '@/lib/utils';
 
 import ExternalLink from './external-link';

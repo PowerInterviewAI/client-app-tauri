@@ -44,7 +44,7 @@
       "infoPlist": "Info.plist",
       "entitlements": "entitlements.mac.plist",
       "minimumSystemVersion": "14.4",
-      "signingIdentity": null
+      "signingIdentity": "-"
     },
     "windows": {
       "webviewInstallMode": {

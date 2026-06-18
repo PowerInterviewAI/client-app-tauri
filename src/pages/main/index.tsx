@@ -1,4 +1,4 @@
-import { Loader } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -266,11 +266,25 @@ export default function MainPage() {
 
       {(appState?.runningState === RunningState.Starting ||
         appState?.runningState === RunningState.Stopping) && (
-        <div className="fixed inset-0 flex flex-col items-center justify-center gap-2 bg-background/60 z-50 pointer-events-none">
-          <Loader className="w-6 h-6 animate-spin text-foreground" />
-          <span className="text-sm text-foreground">
-            {appState.runningState === RunningState.Starting ? 'Starting…' : 'Stopping…'}
-          </span>
+        <div className="fixed inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm z-50 pointer-events-none">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2
+              className={`w-8 h-8 animate-spin ${
+                appState.runningState === RunningState.Starting
+                  ? 'text-primary'
+                  : 'text-destructive'
+              }`}
+            />
+            <span
+              className={`text-sm font-medium ${
+                appState.runningState === RunningState.Starting
+                  ? 'text-primary'
+                  : 'text-destructive'
+              }`}
+            >
+              {appState.runningState === RunningState.Starting ? 'Starting…' : 'Stopping…'}
+            </span>
+          </div>
         </div>
       )}
     </div>

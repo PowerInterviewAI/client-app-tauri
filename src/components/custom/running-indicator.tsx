@@ -17,9 +17,9 @@ export function RunningIndicator({ runningState, compact = false, className = ''
       labelClass: 'text-muted-foreground',
     },
     [RunningState.Starting]: {
-      dotClass: 'bg-primary animate-pulse',
+      dotClass: 'border-2 border-primary border-t-transparent animate-spin',
       label: 'Starting',
-      labelClass: 'text-primary animate-pulse',
+      labelClass: 'text-primary',
     },
     [RunningState.Running]: {
       dotClass: 'bg-destructive animate-pulse',
@@ -27,9 +27,9 @@ export function RunningIndicator({ runningState, compact = false, className = ''
       labelClass: 'text-destructive animate-pulse',
     },
     [RunningState.Stopping]: {
-      dotClass: 'bg-destructive animate-pulse',
+      dotClass: 'border-2 border-destructive border-t-transparent animate-spin',
       label: 'Stopping',
-      labelClass: 'text-destructive animate-pulse',
+      labelClass: 'text-destructive',
     },
   };
 

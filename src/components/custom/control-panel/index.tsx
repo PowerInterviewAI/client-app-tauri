@@ -1,4 +1,4 @@
-import { Ellipsis, Play, Square } from 'lucide-react';
+import { Loader2, Play, Square } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useAppState } from '@/hooks/use-app-state';
@@ -63,7 +63,7 @@ export default function ControlPanel({ onProfileClick, onSignOut }: ControlPanel
     [RunningState.Starting]: {
       onClick: () => {},
       className: 'bg-blue-600 hover:bg-blue-600/90',
-      icon: <Ellipsis className="h-3.5 w-3.5 animate-pulse" />,
+      icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
       label: 'Starting...',
     },
     [RunningState.Running]: {
@@ -77,7 +77,7 @@ export default function ControlPanel({ onProfileClick, onSignOut }: ControlPanel
     [RunningState.Stopping]: {
       onClick: () => {},
       className: 'bg-destructive hover:bg-destructive/90',
-      icon: <Ellipsis className="h-3.5 w-3.5 animate-pulse" />,
+      icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
       label: 'Stopping...',
     },
   };

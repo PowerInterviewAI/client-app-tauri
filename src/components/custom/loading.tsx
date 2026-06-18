@@ -1,4 +1,4 @@
-import { Loader } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 import logoSvg from '/logo.svg';
 
@@ -17,7 +17,7 @@ export function LoadingPage({ disclaimer }: LoadingProps) {
           <p className="text-2xl font-bold">{title}</p>
         </div>
         <p className="animate-pulse text-sm mt-4">{disclaimer}</p>
-        <Loader className="w-4 h-4 animate-spin" />
+        <Loader2 className="w-4 h-4 animate-spin" />
       </div>
     </div>
   );
@@ -27,7 +27,7 @@ export function Loading({ disclaimer }: LoadingProps) {
   return (
     <div className="flex flex-col items-center">
       <p className="animate-pulse text-sm mt-4">{disclaimer}</p>
-      <Loader className="w-4 h-4 animate-spin" />
+      <Loader2 className="w-4 h-4 animate-spin" />
     </div>
   );
 }

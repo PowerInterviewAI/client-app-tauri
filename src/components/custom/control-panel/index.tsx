@@ -18,7 +18,6 @@ import { ProfileGroup } from './profile-group';
 import { ToolsGroup } from './tools-group';
 
 interface ControlPanelProps {
-  assistantState: RunningState;
   onProfileClick: () => void;
   onSignOut: () => void;
 }
@@ -112,7 +111,7 @@ export default function ControlPanel({ onProfileClick, onSignOut }: ControlPanel
 
     for (const { ok, message } of checks) {
       if (!ok) {
-        alert(message);
+        toast.error(message);
         return false;
       }
     }

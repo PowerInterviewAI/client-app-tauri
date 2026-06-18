@@ -19,8 +19,6 @@ import { useConfigStore } from '@/hooks/use-config-store';
 import useIsStealthMode from '@/hooks/use-is-stealth-mode';
 import { useWarmUpPermissions } from '@/hooks/use-warm-up-permissions';
 import { RunningState, UserRole } from '@/types/app-state';
-import { type ActionSuggestion, type LiveSuggestion } from '@/types/suggestion';
-import { type Transcript } from '@/types/transcript';
 
 export default function MainPage() {
   const { logout } = useAuth();
@@ -31,9 +29,6 @@ export default function MainPage() {
   const [now] = useState(() => Date.now());
   const { config, isLoading: configLoading, loadConfig } = useConfigStore();
   const { setVideoPanelRef, stopAssistant } = useAssistantService();
-  const [transcripts, setTranscripts] = useState<Transcript[]>([]);
-  const [liveSuggestions, setLiveSuggestions] = useState<LiveSuggestion[]>([]);
-  const [actionSuggestions, setActionSuggestions] = useState<ActionSuggestion[]>([]);
   const videoPanelRef = useRef<VideoPanelHandle>(null);
   const [transcriptHeight, setTranscriptHeight] = useState<number | null>(null);
   const [suggestionHeight, setSuggestionHeight] = useState<number | null>(null);
@@ -70,6 +65,9 @@ export default function MainPage() {
     loadConfig();
   }, [loadConfig]);
 
+  const transcripts = appState?.transcripts ?? [];
+  const liveSuggestions = appState?.liveSuggestions ?? [];
+  const actionSuggestions = appState?.actionSuggestions ?? [];
   const hasLiveSuggestions = liveSuggestions.length > 0;
   const hasActionSuggestions = actionSuggestions.length > 0;
   const hasTranscripts = transcripts.length > 0;
@@ -157,10 +155,9 @@ export default function MainPage() {
     computeAvailable();
   }, [appState?.runningState, appState, computeAvailable]);
 
-  // Sign out handling
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     await logout();
-  };
+  }, [logout]);
 
   // Memoized styles to prevent unnecessary re-renders
   const transcriptStyle = useMemo(
@@ -168,17 +165,6 @@ export default function MainPage() {
     [transcriptHeight]
   );
   const suggestionStyle = useMemo(() => ({ height: `${suggestionHeight}px` }), [suggestionHeight]);
-
-  // Sync app state to local state
-  useEffect(() => {
-    if (appState?.transcripts) setTranscripts(appState.transcripts);
-  }, [appState?.transcripts]);
-  useEffect(() => {
-    if (appState?.liveSuggestions) setLiveSuggestions(appState.liveSuggestions);
-  }, [appState?.liveSuggestions]);
-  useEffect(() => {
-    if (appState?.actionSuggestions) setActionSuggestions(appState.actionSuggestions);
-  }, [appState?.actionSuggestions]);
 
   // Redirect to login if not logged in
   const _redirectedToLogin = useRef(false);
@@ -264,7 +250,6 @@ export default function MainPage() {
       </div>
 
       <ControlPanel
-        assistantState={appState?.runningState ?? RunningState.Idle}
         onProfileClick={() => setIsProfileOpen(true)}
         onSignOut={handleSignOut}
       />

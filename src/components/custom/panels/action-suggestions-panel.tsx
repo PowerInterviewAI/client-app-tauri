@@ -2,20 +2,19 @@ import { ImageUp, Loader2, PauseCircle, Zap } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
 import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useConfigStore } from '@/hooks/use-config-store';
 import useIsStealthMode from '@/hooks/use-is-stealth-mode';
 import { type ActionSuggestion, SuggestionState } from '@/types/suggestion';
 
-// when a question is too long we truncate it in the middle to keep the UI compact
+import { SafeMarkdown } from '../safe-markdown';
+
 const MAX_QUESTION_LENGTH = 256;
 function truncateMiddle(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
   const half = Math.floor((maxLen - 3) / 2);
   return text.slice(0, half) + ' ... ... ... ' + text.slice(text.length - (maxLen - 3 - half));
 }
-
-import { Checkbox } from '../../ui/checkbox';
-import { SafeMarkdown } from '../safe-markdown';
 
 interface ActionSuggestionsPanelProps {
   actionSuggestions?: ActionSuggestion[];
@@ -131,7 +130,7 @@ function ActionSuggestionsPanel({ actionSuggestions = [], style }: ActionSuggest
         console.error('Failed to unsubscribe from hotkey scroll events', e);
       }
     };
-  }, [containerRef]);
+  }, []);
 
   return (
     <Card
@@ -177,7 +176,7 @@ function ActionSuggestionsPanel({ actionSuggestions = [], style }: ActionSuggest
           <div className="p-2 space-y-3">
             {actionSuggestions.map((s, idx) => (
               <div
-                key={idx}
+                key={s.timestamp}
                 ref={idx === actionSuggestions.length - 1 ? lastItemRef : null}
                 className="flex gap-3 pb-3 border-b border-border/40 last:border-0"
               >

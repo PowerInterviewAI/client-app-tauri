@@ -159,6 +159,6 @@ export {
   DialogPortal,
   DialogTitle,
   DialogTrigger,
-  MainContainerContext as MainContainerContext,
-  useMainContainer,
+  MainContainerContext,
+  useMainContainer, // eslint-disable-line react-refresh/only-export-components
 };

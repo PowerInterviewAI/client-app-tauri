@@ -1,7 +1,11 @@
 import { Loader2, PauseCircle, Zap } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
+import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useConfigStore } from '@/hooks/use-config-store';
+import useIsStealthMode from '@/hooks/use-is-stealth-mode';
+import { type LiveSuggestion, SuggestionState } from '@/types/suggestion';
 
 const MAX_QUESTION_LENGTH = 256;
 
@@ -10,12 +14,6 @@ function truncateMiddle(text: string | undefined, maxLen: number): string {
   const half = Math.floor((maxLen - 3) / 2);
   return text.slice(0, half) + ' ... ... ... ' + text.slice(text.length - (maxLen - 3 - half));
 }
-
-import { Card } from '@/components/ui/card';
-import useIsStealthMode from '@/hooks/use-is-stealth-mode';
-import { type LiveSuggestion, SuggestionState } from '@/types/suggestion';
-
-import { Checkbox } from '../../ui/checkbox';
 
 interface SuggestionsPanelProps {
   suggestions?: LiveSuggestion[];
@@ -129,7 +127,7 @@ function LiveSuggestionsPanel({ suggestions = [], style }: SuggestionsPanelProps
         console.error('Failed to unsubscribe from hotkey scroll events', e);
       }
     };
-  }, [containerRef]);
+  }, []);
 
   return (
     <Card
@@ -175,7 +173,7 @@ function LiveSuggestionsPanel({ suggestions = [], style }: SuggestionsPanelProps
           <div className="p-2 space-y-3">
             {suggestions.map((s, idx) => (
               <div
-                key={idx}
+                key={s.timestamp}
                 ref={idx === suggestions.length - 1 ? lastItemRef : null}
                 className="flex gap-3 pb-3 border-b border-border/40 last:border-0"
               >

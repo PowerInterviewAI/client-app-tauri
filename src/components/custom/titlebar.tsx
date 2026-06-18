@@ -9,6 +9,7 @@ import { useAppState } from '@/hooks/use-app-state';
 import { useConfigStore } from '@/hooks/use-config-store';
 import useIsStealthMode from '@/hooks/use-is-stealth-mode';
 import { useThemeStore } from '@/hooks/use-theme-store';
+import { formatHotkey, Hotkey, HOTKEYS } from '@/lib/hotkeys';
 import { getTauriApi } from '@/lib/utils';
 
 const isMac = navigator.platform.toUpperCase().includes('MAC');
@@ -112,7 +113,7 @@ export default function Titlebar() {
                 </button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Toggle stealth mode (Ctrl+Shift+M)</p>
+                <p>Toggle stealth mode ({formatHotkey(HOTKEYS[Hotkey.ToggleStealth])})</p>
               </TooltipContent>
             </Tooltip>
           )}

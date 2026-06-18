@@ -133,16 +133,22 @@ export default function ControlPanel({ onProfileClick, onSignOut }: ControlPanel
         getDisabled={getDisabled}
       />
 
-      <div className="flex flex-1 justify-center gap-2 items-center">
-        <AudioGroup
-          audioInputDevices={audioInputDevices ?? []}
-          audioInputDeviceNotFound={audioInputDeviceNotFound}
-          getDisabled={getDisabled}
-        />
-        <LLMGroup getDisabled={getDisabled} />
-        {/* <VideoGroup videoDeviceNotFound={videoDeviceNotFound} getDisabled={getDisabled} /> */}
-        <MainGroup stateConfig={{ onClick, className, icon, label }} getDisabled={getDisabled} />
-        <ToolsGroup getDisabled={getDisabled} />
+      <div className="flex flex-1 items-center">
+        <div className="flex flex-1 justify-end gap-2 items-center">
+          <AudioGroup
+            audioInputDevices={audioInputDevices ?? []}
+            audioInputDeviceNotFound={audioInputDeviceNotFound}
+            getDisabled={getDisabled}
+          />
+          <LLMGroup getDisabled={getDisabled} />
+          {/* <VideoGroup videoDeviceNotFound={videoDeviceNotFound} getDisabled={getDisabled} /> */}
+        </div>
+        <div className="px-2">
+          <MainGroup stateConfig={{ onClick, className, icon, label }} getDisabled={getDisabled} />
+        </div>
+        <div className="flex flex-1 justify-start gap-2 items-center">
+          <ToolsGroup getDisabled={getDisabled} />
+        </div>
       </div>
 
       <ZoomControl />

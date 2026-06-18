@@ -266,7 +266,7 @@ export default function MainPage() {
 
       {(appState?.runningState === RunningState.Starting ||
         appState?.runningState === RunningState.Stopping) && (
-        <div className="fixed inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm z-50 pointer-events-none">
+        <div className="fixed inset-0 flex items-center justify-center bg-background/50 backdrop-blur-[2px] z-50">
           <div className="flex flex-col items-center gap-3">
             <Loader2
               className={`w-8 h-8 animate-spin ${

@@ -52,9 +52,9 @@ utilities. All long-lived services are constructed once in `lib.rs::run()` and s
 
 - `src-tauri/tauri.conf.json` - window, bundle, and updater settings for macOS/Windows.
 - `src-tauri/Cargo.toml` - Rust dependency manifest (notable: `reqwest` for REST + streaming,
-  `tokio-tungstenite` for the loopback ASR websocket, `cpal`/`screencapturekit` for native audio
-  capture, `xcap`/`image` for screenshots, Tauri plugins for global shortcuts, dialogs, shell,
-  fs, and the updater).
+  `tokio-tungstenite` for the loopback ASR websocket, `cpal` (Windows WASAPI loopback) /
+  `cidre` (macOS CoreAudio process taps) for native audio capture, `xcap`/`image` for
+  screenshots, Tauri plugins for global shortcuts, dialogs, shell, fs, and the updater).
 
 ### IPC Bridge & State Sync
 
@@ -129,9 +129,10 @@ latency/memory. Returned `partial`/`final` transcript messages are forwarded to 
 
 - Windows: WASAPI loopback via `cpal` (the default render endpoint opened as an input
   device, which transparently captures system output).
-- macOS: ScreenCaptureKit audio capture (requires screen-recording permission); a 2x2 video
-  config is used so SCK only delivers audio, dropping any frames since no screen handler is
-  attached.
+- macOS: CoreAudio process taps via `cidre` (macOS 14.4+). A global mono tap is aggregated
+  with the default output device and read through an IO proc. Requires the "Audio Capture"
+  privacy permission (`kTCCServiceAudioCapture`), not Screen Recording. The TCC grant takes
+  effect immediately so no app restart is needed after granting.
 - Captured audio is downmixed to mono and resampled to 16 kHz PCM16 with a streaming
   linear-interpolation resampler (state carried across capture buffers to avoid discontinuities),
   then streamed over its own WebSocket to the same ASR endpoint. The streamer reconnects with
@@ -140,8 +141,9 @@ latency/memory. Returned `partial`/`final` transcript messages are forwarded to 
 
 The renderer starts/stops native capture through the `enable_loopback_audio` /
 `disable_loopback_audio` commands, called from `liveTranscriptionService.start()` /`.stop()`. On
-macOS, a loopback start failure (most commonly a denied screen-recording permission) surfaces a
-native "permission denied" dialog instead of a generic error.
+macOS, a loopback start failure surfaces a native guidance dialog instead of a generic error.
+The dialog covers both first-run (the OS TCC prompt appeared separately, grant it and start
+again) and previously-denied (go to System Settings > Privacy > Audio Capture) scenarios.
 
 ### Transcript aggregation, merging, and live-suggestion triggers
 
@@ -161,11 +163,11 @@ native "permission denied" dialog instead of a generic error.
   finalized utterance ended more than `LIVE_SUGGESTION_GAP_MS` (2s) ago. This avoids firing a
   suggestion while the candidate is actively answering.
 
-### Platform note: macOS capture is unverified locally
+### Platform note: macOS capture requires real hardware
 
-The macOS ScreenCaptureKit path is gated behind `#[cfg(target_os = "macos")]` and is not
-compiled by `cargo check` on Windows. It is written against the documented
-`screencapturekit` 1.x API and must be validated by the macOS CI build / on real hardware.
+The macOS CoreAudio process tap path is gated behind `#[cfg(target_os = "macos")]` and is not
+compiled by `cargo check` on Windows. It requires macOS 14.4+ (enforced via `minimumSystemVersion`
+in `tauri.conf.json`). The full permission and capture flow must be validated on real macOS hardware.
 
 ## AI Suggestions
 
@@ -284,13 +286,13 @@ handler:
 `useAssistantService` (`src/hooks/use-assistant-service.ts`) drives `AppState.runningState`
 (`idle -> starting -> running -> stopping -> idle`):
 
-- **Start**: pre-flight checks microphone and screen-recording permissions (showing native
-  denial dialogs and aborting if either is denied), and on macOS verifies
-  `getDisplayMedia`-capable screen sources are available (prompting a restart if not). Then sets
-  `Starting`, clears all previous transcripts/suggestions (`tools.clearAll`), calls
-  `transcription_start` (marks the transcript service active and flips `RunningState` to
-  `Running` on the Rust side), starts `liveTranscriptionService` (mic capture + native loopback),
-  waits 3s, then sets `Running`.
+- **Start**: sets `Starting`, clears all previous transcripts/suggestions (`tools.clearAll`),
+  calls `transcription_start` (marks the transcript service active on the Rust side), starts
+  `liveTranscriptionService` which acquires microphone via `getUserMedia` (showing the native
+  denial dialog if denied) and starts native loopback capture via `enable_loopback_audio` (on
+  macOS, a CoreAudio tap failure shows the Audio Capture guidance dialog), waits 3s, then sets
+  `Running`. Permission prompts surface from the OS on first use rather than via pre-flight
+  checks; microphone and screen recording are warmed up at app load via `useWarmUpPermissions`.
 - **Stop**: sets `Stopping`, stops mic capture/loopback/live-transcription, calls
   `transcription_stop`/`live_suggestion_stop`/`action_suggestion_stop` in parallel, force-disables
   stealth mode, waits 3s, then sets `Idle`.
@@ -334,7 +336,7 @@ running", max screenshots reached, upload failures).
   after startup, then every 4 hours.
 - `check_and_download_update` checks the configured updater endpoint
   (`tauri-plugin-updater`, manifest at
-  `https://github.com/PowerInterviewAI/client-app/releases/latest/download/latest.json`). If an
+  `https://github.com/PowerInterviewAI/client-app-tauri/releases/latest/download/latest.json`). If an
   update is available, it is **downloaded but not installed**, and the bytes are held in a
   process-wide `PENDING_UPDATE` static. Emits `auto-updater:status` with `{ status: "downloaded",
 version }` or `{ status: "error", error }`.
@@ -356,16 +358,25 @@ exposed to the renderer through the `permissions` bridge (`src/lib/tauri-bridge.
   Off macOS they return `true` (always granted).
 - **Requests** (`requestMicrophone`, `requestScreenRecording`) call
   `AVCaptureDevice.requestAccess` / `CGRequestScreenCaptureAccess`, which trigger the native
-  prompt **and register the app in the System Settings Privacy lists**. The start flow checks,
-  then requests when not granted.
-- Screen recording gates both the system-audio loopback (ScreenCaptureKit) and the
-  coding-challenge screenshots (`xcap`). macOS applies a newly granted screen-recording grant
-  only after the app relaunches.
+  prompt **and register the app in the System Settings Privacy lists**.
+- Screen recording gates only the coding-challenge screenshots (`xcap`). macOS applies a newly
+  granted screen-recording grant only after the app relaunches.
+- **Audio Capture** (`kTCCServiceAudioCapture`) is NOT handled by this plugin. It is gated by
+  CoreAudio itself: `create_process_tap()` in `loopback.rs` triggers the TCC prompt on first
+  use. The grant takes effect immediately (no restart needed). The plugin has no
+  `checkAudioCapture` / `requestAudioCapture` API.
 
-`src-tauri/src/commands/permissions.rs` now only renders the guidance dialogs:
+`useWarmUpPermissions` (`src/hooks/use-warm-up-permissions.ts`) proactively requests microphone
+(via `getUserMedia`) and screen recording (via the plugin) at app load once the user is logged
+in. Audio Capture is not warmed up because the plugin does not support it; it prompts on first
+assistant start instead.
+
+`src-tauri/src/commands/permissions.rs` renders the guidance dialogs:
 `permissions_show_denied_dialog` shows a native error dialog with an "Open System Settings"
-button that deep-links to the relevant Privacy pane; `permissions_show_restart_dialog` asks the
-user to restart the app after granting a permission.
+button that deep-links to the relevant Privacy pane. For `system-audio`, the dialog text covers
+both first-run (grant the OS TCC prompt and start again) and previously-denied scenarios;
+`permissions_show_restart_dialog` asks the user to restart the app after granting a permission
+that requires a relaunch (currently only screen recording).
 
 ## Build and Release Workflow
 

@@ -6,19 +6,15 @@ use crate::AppServices;
 
 #[tauri::command]
 pub fn transcription_start(services: State<'_, AppServices>) {
-    use crate::types::app_state::RunningState;
     services.transcript.start();
-    services.app_state.set_running_state(RunningState::Running);
 }
 
 #[tauri::command]
 pub fn transcription_stop(services: State<'_, AppServices>) {
-    use crate::types::app_state::RunningState;
     services.transcript.stop();
     // Safety net: ensure native loopback capture stops even if the renderer's
     // disable_loopback_audio call did not run.
     services.loopback.stop();
-    services.app_state.set_running_state(RunningState::Idle);
 }
 
 #[tauri::command]

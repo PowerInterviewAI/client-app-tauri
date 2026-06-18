@@ -1,4 +1,4 @@
-import { EyeOff, Minus, Moon, Square, Sun } from 'lucide-react';
+import { EyeOff, Minus, Square } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import faviconSvg from '/favicon.svg';
@@ -8,7 +8,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useAppState } from '@/hooks/use-app-state';
 import { useConfigStore } from '@/hooks/use-config-store';
 import useIsStealthMode from '@/hooks/use-is-stealth-mode';
-import { useThemeStore } from '@/hooks/use-theme-store';
 import { formatHotkey, Hotkey, HOTKEYS } from '@/lib/hotkeys';
 import { getTauriApi } from '@/lib/utils';
 
@@ -21,8 +20,6 @@ const TRAFFIC_LIGHT_LOGICAL_CLEAR = 72;
 
 export default function Titlebar() {
   const isStealth = useIsStealthMode();
-
-  const { isDark, toggleTheme } = useThemeStore();
 
   const [zoomFactor, setZoomFactor] = useState(1);
   useEffect(() => {
@@ -117,21 +114,6 @@ export default function Titlebar() {
               </TooltipContent>
             </Tooltip>
           )}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => toggleTheme()}
-                aria-label="Toggle theme"
-                className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted"
-              >
-                {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{isDark ? 'Light mode' : 'Dark mode'}</p>
-            </TooltipContent>
-          </Tooltip>
-
           <Tooltip>
             <TooltipTrigger asChild>
               <button

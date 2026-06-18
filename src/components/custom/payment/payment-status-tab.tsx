@@ -2,9 +2,11 @@
  * Payment Status Tab Component
  */
 
-import { Copy, RefreshCw } from 'lucide-react';
+import { save } from '@tauri-apps/plugin-dialog';
+import { writeFile } from '@tauri-apps/plugin-fs';
+import { Copy, FileText, FolderOpen, RefreshCw } from 'lucide-react';
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { QrcodeCanvas, useQrcodeDownload } from 'react-qrcode-pretty';
+import { QrcodeCanvas } from 'react-qrcode-pretty';
 import { toast } from 'sonner';
 
 import logoQr from '/logo-qr.png';
@@ -12,8 +14,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePayment } from '@/hooks/use-payment';
-import { cn } from '@/lib/utils';
+import { cn, getTauriApi } from '@/lib/utils';
 import type { PaymentStatusResponse } from '@/types/payment';
 import { PaymentStatus } from '@/types/payment';
 
@@ -88,7 +91,76 @@ export default function PaymentStatusTab({ initialPaymentId = '' }: PaymentStatu
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [setQrcode, downloadQrcode, isQrcodeReady] = useQrcodeDownload('payment');
+  // react-qrcode-pretty's useQrcodeDownload triggers a browser <a download> click (via
+  // downloadjs), which does nothing inside the Tauri webview. Capture the canvas ourselves and
+  // save it through the native dialog + fs plugins instead (same path as the transcript export).
+  const [qrCanvas, setQrCanvas] = useState<HTMLCanvasElement | SVGSVGElement | null>(null);
+  const isQrcodeReady = qrCanvas !== null;
+
+  const downloadQrcode = useCallback(
+    async (fileName: string) => {
+      if (!(qrCanvas instanceof HTMLCanvasElement)) return;
+      try {
+        const dataUrl = qrCanvas.toDataURL('image/png');
+        const base64 = dataUrl.split(',')[1] ?? '';
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+        const filePath = await save({
+          filters: [{ name: 'PNG Image', extensions: ['png'] }],
+          defaultPath: `${fileName}.png`,
+        });
+        if (!filePath) return; // user cancelled the save dialog
+
+        await writeFile(filePath, bytes);
+
+        const tauri = getTauriApi();
+        toast.success('QR code saved', {
+          // Give the user time to use the open buttons before the toast dismisses.
+          duration: 10000,
+          action: (
+            <div className="flex items-center ml-auto gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 cursor-pointer"
+                    onClick={() => tauri?.tools.openPath(filePath)}
+                  >
+                    <FileText className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Open file</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 cursor-pointer"
+                    onClick={() => tauri?.tools.revealPath(filePath)}
+                  >
+                    <FolderOpen className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Open folder</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          ),
+        });
+      } catch (err) {
+        console.error('[QR] download failed:', err);
+        toast.error('Failed to save QR code');
+      }
+    },
+    [qrCanvas]
+  );
 
   const paymentStatusRef = React.useRef<PaymentStatusResponse | null>(null);
 
@@ -278,7 +350,7 @@ export default function PaymentStatusTab({ initialPaymentId = '' }: PaymentStatu
                         <div className="flex flex-col items-center space-y-3">
                           <MemoQr
                             paymentUri={paymentUri}
-                            setQrcode={setQrcode}
+                            setQrcode={setQrCanvas}
                             isQrcodeReady={isQrcodeReady}
                             orderId={paymentStatus.order_id}
                             download={downloadQrcode}

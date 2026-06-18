@@ -1,48 +1,65 @@
 ---
 name: caveman-commit
-description: Write git commit messages in caveman speak. Use when the user asks for a "caveman commit", wants to commit in caveman/grunt style, or says things like "commit like caveman" / "ooga booga commit".
+description: >
+  Ultra-compressed commit message generator. Cuts noise from commit messages while preserving
+  intent and reasoning. Conventional Commits format. Subject ≤50 chars, body only when "why"
+  isn't obvious. Use when user says "write a commit", "commit message", "generate commit",
+  "/commit", or invokes /caveman-commit. Auto-triggers when staging changes.
 ---
 
-# Caveman Commit
-
-Stage the relevant changes and create a git commit whose message is written in
-caveman speak: short, blunt, primitive grammar. No articles, no helper verbs,
-present tense, ALL CAPS optional but encouraged for the subject.
-
-## How to write the message
-
-1. Look at the diff (`git status` + `git diff --staged` or `git diff`) to
-   understand what actually changed.
-2. Compress the real change into caveman grammar:
-   - Drop articles ("the", "a", "an") and most pronouns.
-   - Drop helper verbs ("is", "are", "have", "will").
-   - Use bare present-tense verbs: ADD, FIX, SMASH, MAKE, KILL, MOVE, CLEAN.
-   - Keep it truthful: the grunt must describe the genuine change.
-3. Subject line: one short caveman sentence, e.g. `ME ADD LOGIN BUTTON`.
-4. Optional body: a few more grunts giving detail, one thought per line.
-
-## Examples
-
-```
-FIX CRASH WHEN USER CLICK FAST
-
-BUTTON SMASH TWICE. CODE NO LIKE. NOW CODE WAIT. NO MORE CRASH.
-```
-
-```
-ADD DARK MODE
-
-EYE HURT IN CAVE. NOW APP GO DARK. EYE HAPPY.
-```
-
-```
-ME DELETE DEAD CODE. CODE NOT MOVE. CODE GONE NOW.
-```
+Write commit messages terse and exact. Conventional Commits format. No fluff. Why over what.
 
 ## Rules
 
-- Never invent changes that are not in the diff. Grunt about real work only.
-- Keep the subject under ~50 characters.
-- Do not use em-dashes anywhere.
-- Follow the repo's normal commit/push conventions (branch, co-author trailer,
-  etc.) unless the user says otherwise. Only the wording is caveman.
+**Subject line:**
+- `<type>(<scope>): <imperative summary>` — `<scope>` optional
+- Types: `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, `chore`, `build`, `ci`, `style`, `revert`
+- Imperative mood: "add", "fix", "remove" — not "added", "adds", "adding"
+- ≤50 chars when possible, hard cap 72
+- No trailing period
+- Match project convention for capitalization after the colon
+
+**Body (only if needed):**
+- Skip entirely when subject is self-explanatory
+- Add body only for: non-obvious *why*, breaking changes, migration notes, linked issues
+- Wrap at 72 chars
+- Bullets `-` not `*`
+- Reference issues/PRs at end: `Closes #42`, `Refs #17`
+
+**What NEVER goes in:**
+- "This commit does X", "I", "we", "now", "currently" — the diff says what
+- "As requested by..." — use Co-authored-by trailer
+- "Generated with Claude Code" or any AI attribution — unless the user's own rule requires an `Assisted-by`/AI-attribution trailer, then add it as a trailer
+- Emoji (unless project convention requires)
+- Restating the file name when scope already says it
+
+## Examples
+
+Diff: new endpoint for user profile with body explaining the why
+- ❌ "feat: add a new endpoint to get user profile information from the database"
+- ✅
+  ```
+  feat(api): add GET /users/:id/profile
+
+  Mobile client needs profile data without the full user payload
+  to reduce LTE bandwidth on cold-launch screens.
+
+  Closes #128
+  ```
+
+Diff: breaking API change
+- ✅
+  ```
+  feat(api)!: rename /v1/orders to /v1/checkout
+
+  BREAKING CHANGE: clients on /v1/orders must migrate to /v1/checkout
+  before 2026-06-01. Old route returns 410 after that date.
+  ```
+
+## Auto-Clarity
+
+Always include body for: breaking changes, security fixes, data migrations, anything reverting a prior commit. Never compress these into subject-only — future debuggers need the context.
+
+## Boundaries
+
+Only generates the commit message. Does not run `git commit`, does not stage files, does not amend. Output the message as a code block ready to paste. "stop caveman-commit" or "normal mode": revert to verbose commit style.

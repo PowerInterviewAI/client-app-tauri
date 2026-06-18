@@ -2,6 +2,29 @@ import { RefreshCcw, ZoomIn, ZoomOut } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { formatHotkey, type HotkeyInfo } from '@/lib/hotkeys';
+
+// Per-key zoom combos. The Rust backend registers these globally with a Ctrl+Shift base on
+// Windows/Linux and Ctrl+Option (Alt) on macOS (see register_hotkeys in src-tauri/src/lib.rs);
+// formatHotkey renders the right one (and mac modifier symbols) for the current platform.
+const ZOOM_RESET: HotkeyInfo = {
+  combo: 'Ctrl+Shift+0',
+  comboMac: 'Ctrl+Alt+0',
+  title: 'Reset zoom',
+  description: '',
+};
+const ZOOM_IN: HotkeyInfo = {
+  combo: 'Ctrl+Shift+=',
+  comboMac: 'Ctrl+Alt+=',
+  title: 'Zoom in',
+  description: '',
+};
+const ZOOM_OUT: HotkeyInfo = {
+  combo: 'Ctrl+Shift+-',
+  comboMac: 'Ctrl+Alt+-',
+  title: 'Zoom out',
+  description: '',
+};
 
 /**
  * Render the set of zoom buttons that live in the titlebar.
@@ -56,7 +79,7 @@ export default function ZoomControl() {
           </button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Reset zoom (Ctrl+Shift+0)</p>
+          <p>Reset zoom ({formatHotkey(ZOOM_RESET)})</p>
         </TooltipContent>
       </Tooltip>
 
@@ -74,7 +97,7 @@ export default function ZoomControl() {
           </button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Zoom in (Ctrl+Shift+=)</p>
+          <p>Zoom in ({formatHotkey(ZOOM_IN)})</p>
         </TooltipContent>
       </Tooltip>
 
@@ -92,7 +115,7 @@ export default function ZoomControl() {
           </button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Zoom out (Ctrl+Shift+-)</p>
+          <p>Zoom out ({formatHotkey(ZOOM_OUT)})</p>
         </TooltipContent>
       </Tooltip>
     </div>

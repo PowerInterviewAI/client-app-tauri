@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "caveman-commit": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".claude/skills/caveman-commit/SKILL.md",
+      "computedHash": "06e676b0291d10820844729adf43ef844286a904b58a37003119762fc24c1027"
+    },
+    "tauri-v2": {
+      "source": "nodnarbnitram/claude-code-extensions",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/tauri-v2/SKILL.md",
+      "computedHash": "377c61c46cf48c35b942042bc8abb9a039049a47f37d7f12b4f491d012777490"
+    }
+  }
+}

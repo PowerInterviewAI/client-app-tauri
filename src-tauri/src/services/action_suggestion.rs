@@ -329,14 +329,24 @@ async fn capture_and_grayscale(window_center: Option<(i32, i32)>) -> Result<Vec<
     let monitors = xcap::Monitor::all().map_err(|e| e.to_string())?;
 
     // Pick the monitor whose bounds contain the window center, falling back to the first.
+    //
+    // xcap on macOS reports x/y in logical points (CGDisplayBounds) but width/height in
+    // physical pixels (CGDisplayPixelsWide/High). Tauri's outer_position() is always in
+    // physical pixels. Multiplying the logical position by scale_factor normalises both
+    // to physical pixels before comparing, fixing multi-monitor Retina setups on macOS.
+    // On Windows xcap already uses physical pixels for everything so scale_factor is 1.0
+    // and this multiplication is a no-op.
     let idx = window_center
         .and_then(|(cx, cy)| {
             monitors.iter().position(|m| {
-                let (Ok(mx), Ok(my), Ok(mw), Ok(mh)) =
+                let (Ok(lx), Ok(ly), Ok(mw), Ok(mh)) =
                     (m.x(), m.y(), m.width(), m.height())
                 else {
                     return false;
                 };
+                let scale = m.scale_factor().unwrap_or(1.0);
+                let mx = (lx as f32 * scale) as i32;
+                let my = (ly as f32 * scale) as i32;
                 cx >= mx && cx < mx + mw as i32 && cy >= my && cy < my + mh as i32
             })
         })

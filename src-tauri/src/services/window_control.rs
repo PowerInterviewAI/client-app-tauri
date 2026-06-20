@@ -66,6 +66,74 @@ fn apply_window_opacity(win: &tauri::WebviewWindow, opacity: f64) {
     let _ = handle.run_on_main_thread(move || set_window_opacity(&win, opacity));
 }
 
+/// Hide or restore the Windows taskbar button for the given window.
+///
+/// Toggling `WS_EX_TOOLWINDOW`/`WS_EX_APPWINDOW` makes the taskbar button vanish or
+/// reappear. `SetWindowPos(SWP_FRAMECHANGED)` forces the shell to refresh immediately so
+/// we don't need a hide/show cycle. Must run on the main thread (same rule as `set_window_opacity`).
+#[cfg(target_os = "windows")]
+fn set_taskbar_visibility_windows(win: &tauri::WebviewWindow, visible: bool) {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    extern "system" {
+        fn GetWindowLongW(hwnd: isize, index: i32) -> i32;
+        fn SetWindowLongW(hwnd: isize, index: i32, value: i32) -> i32;
+        fn SetWindowPos(
+            hwnd: isize,
+            hwnd_insert_after: isize,
+            x: i32,
+            y: i32,
+            cx: i32,
+            cy: i32,
+            flags: u32,
+        ) -> i32;
+    }
+    const GWL_EXSTYLE: i32 = -20;
+    const WS_EX_APPWINDOW: i32 = 0x0004_0000;
+    const WS_EX_TOOLWINDOW: i32 = 0x0000_0080;
+    const SWP_NOMOVE: u32 = 0x0002;
+    const SWP_NOSIZE: u32 = 0x0001;
+    const SWP_NOZORDER: u32 = 0x0004;
+    const SWP_NOOWNERZORDER: u32 = 0x0200;
+    const SWP_NOACTIVATE: u32 = 0x0010;
+    const SWP_FRAMECHANGED: u32 = 0x0020;
+
+    if let Ok(handle) = win.window_handle() {
+        if let RawWindowHandle::Win32(h) = handle.as_raw() {
+            let hwnd = h.hwnd.get() as isize;
+            unsafe {
+                let ex = GetWindowLongW(hwnd, GWL_EXSTYLE);
+                let new_ex = if visible {
+                    (ex | WS_EX_APPWINDOW) & !WS_EX_TOOLWINDOW
+                } else {
+                    (ex & !WS_EX_APPWINDOW) | WS_EX_TOOLWINDOW
+                };
+                SetWindowLongW(hwnd, GWL_EXSTYLE, new_ex);
+                SetWindowPos(
+                    hwnd,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    SWP_NOMOVE
+                        | SWP_NOSIZE
+                        | SWP_NOZORDER
+                        | SWP_NOOWNERZORDER
+                        | SWP_NOACTIVATE
+                        | SWP_FRAMECHANGED,
+                );
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn apply_taskbar_visibility(win: &tauri::WebviewWindow, visible: bool) {
+    let win = win.clone();
+    let handle = win.app_handle().clone();
+    let _ = handle.run_on_main_thread(move || set_taskbar_visibility_windows(&win, visible));
+}
+
 /// Re-apply the Dock icon after returning from `Accessory` to `Regular` activation policy.
 ///
 /// AppKit rebuilds the Dock tile from `NSApp.applicationIconImage` (not the bundle's
@@ -172,13 +240,20 @@ impl WindowControlService {
         self.app_state.set_stealth(true);
         let _ = self.app_handle.emit("stealth-changed", true);
 
+        #[cfg(target_os = "windows")]
+        apply_taskbar_visibility(&win, false);
+
         #[cfg(target_os = "macos")]
         {
-            // hide dock icon in stealth mode
+            // AppKit APIs require the main thread; global-shortcut callbacks run on a
+            // background thread, so always marshal.
             use tauri::ActivationPolicy;
+            let handle = self.app_handle.clone();
             let _ = self
                 .app_handle
-                .set_activation_policy(ActivationPolicy::Accessory);
+                .run_on_main_thread(move || {
+                    let _ = handle.set_activation_policy(ActivationPolicy::Accessory);
+                });
         }
     }
 
@@ -194,15 +269,21 @@ impl WindowControlService {
         self.app_state.set_stealth(false);
         let _ = self.app_handle.emit("stealth-changed", false);
 
+        #[cfg(target_os = "windows")]
+        apply_taskbar_visibility(&win, true);
+
         #[cfg(target_os = "macos")]
         {
+            // Both the policy change and the icon restore must run on the main thread.
+            // Combine them in one closure to guarantee ordering.
             use tauri::ActivationPolicy;
-            let _ = self
-                .app_handle
-                .set_activation_policy(ActivationPolicy::Regular);
-            // Re-apply the Dock icon, which AppKit drops on the Accessory -> Regular
-            // transition. Marshal to the main thread (toggle may run on a shortcut thread).
-            let _ = self.app_handle.run_on_main_thread(restore_dock_icon);
+            let handle = self.app_handle.clone();
+            let _ = self.app_handle.run_on_main_thread(move || {
+                let _ = handle.set_activation_policy(ActivationPolicy::Regular);
+                // Re-apply the Dock icon, which AppKit drops on the Accessory -> Regular
+                // transition.
+                restore_dock_icon();
+            });
         }
     }
 

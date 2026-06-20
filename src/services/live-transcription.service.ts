@@ -309,7 +309,10 @@ class LiveTranscriptionService {
       try {
         await tauri.transcription.enableLoopbackAudio();
       } catch (err) {
-        if (isMacOS) {
+        // Only the Audio Capture permission gate is marked with `permission:` (see
+        // loopback.rs). Other macOS failures (no output device, aggregate device, etc.) are
+        // genuine device errors and should surface as a generic toast, not the permission dialog.
+        if (isMacOS && String(err).includes('permission:')) {
           await tauri.permissions.showDeniedDialog('system-audio');
           throw Object.assign(new Error(), { name: 'PermissionError' });
         }

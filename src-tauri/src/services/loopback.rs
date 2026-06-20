@@ -564,7 +564,9 @@ mod capture {
         let tap = match tap_desc.create_process_tap() {
             Ok(tap) => tap,
             Err(e) => {
-                let _ = setup_tx.send(Err(format!("System audio capture unavailable: {e}")));
+                // This is the Audio Capture permission gate; mark it so the renderer can show
+                // the permission dialog. Other failures below are device errors, left unmarked.
+                let _ = setup_tx.send(Err(format!("permission:System audio capture unavailable: {e}")));
                 return;
             }
         };

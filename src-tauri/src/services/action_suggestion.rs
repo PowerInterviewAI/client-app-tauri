@@ -116,6 +116,37 @@ impl ActionSuggestionService {
             return;
         }
 
+        // macOS gates screen capture behind the Screen Recording permission. xcap fails
+        // silently when it is missing, so check/request it up front and guide the user
+        // instead of surfacing a generic "capture failed". Reuses the already-installed
+        // tauri-plugin-macos-permissions and the native dialog helpers in commands::permissions.
+        #[cfg(target_os = "macos")]
+        {
+            use tauri_plugin_macos_permissions::{
+                check_screen_recording_permission, request_screen_recording_permission,
+            };
+            if !check_screen_recording_permission().await {
+                // Triggers the native prompt on first use; a no-op if previously denied.
+                request_screen_recording_permission().await;
+                // CGPreflight won't reflect a fresh grant until the app restarts, so always
+                // guide the user; re-check only to pick the right dialog.
+                if check_screen_recording_permission().await {
+                    let _ = crate::commands::permissions::permissions_show_restart_dialog(
+                        self.app_handle.clone(),
+                    )
+                    .await;
+                } else {
+                    let _ = crate::commands::permissions::permissions_show_denied_dialog(
+                        "screen-recording".to_string(),
+                        self.app_handle.clone(),
+                    )
+                    .await;
+                }
+                self.action_lock.release(ActionType::ScreenshotCapture);
+                return;
+            }
+        }
+
         self.emit_suggestions(true);
 
         // Find which monitor the app window is currently on so the screenshot

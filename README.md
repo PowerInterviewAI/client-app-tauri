@@ -7,7 +7,6 @@
 🌐 **Website**: [https://www.powerinterviewai.com](https://www.powerinterviewai.com)
 
 [![Version](https://img.shields.io/github/v/release/PowerInterviewAI/client-app-tauri?label=version&color=blue&cacheSeconds=3600)](https://github.com/PowerInterviewAI/client-app-tauri/releases/latest)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 📧 [Email](mailto:team@vectorleappulse.xyz) | 💬 [Telegram](https://t.me/power_interview_ai) | 💭 [Discord](https://discord.gg/TJJp5azK7Z) | 🐦 [X](https://x.com/power_interview)
 
@@ -168,19 +167,9 @@ client-app-tauri/
 ├── public/
 ```
 
-## Legal Disclaimer
-
-Use for **ethical and legal interview preparation only**.
-
-Users are responsible for complying with all applicable laws and platform policies.
-
 ## Contributing
 
 Pull requests welcome.
-
-## License
-
-MIT License
 
 ## Support
 

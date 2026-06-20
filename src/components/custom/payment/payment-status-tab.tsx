@@ -4,7 +4,7 @@
 
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
-import { Copy, FileText, FolderOpen, RefreshCw } from 'lucide-react';
+import { Copy, FileText, FolderOpen, RefreshCw, X } from 'lucide-react';
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { QrcodeCanvas } from 'react-qrcode-pretty';
 import { toast } from 'sonner';
@@ -116,7 +116,9 @@ export default function PaymentStatusTab({ initialPaymentId = '' }: PaymentStatu
         await writeFile(filePath, bytes);
 
         const tauri = getTauriApi();
+        const toastId = `qr-save-${Date.now()}`;
         toast.success('QR code saved', {
+          id: toastId,
           // Give the user time to use the open buttons before the toast dismisses.
           duration: 10000,
           action: (
@@ -149,6 +151,21 @@ export default function PaymentStatusTab({ initialPaymentId = '' }: PaymentStatu
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>Open folder</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 cursor-pointer"
+                    onClick={() => toast.dismiss(toastId)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Dismiss</p>
                 </TooltipContent>
               </Tooltip>
             </div>

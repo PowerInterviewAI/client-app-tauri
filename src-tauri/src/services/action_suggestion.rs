@@ -9,6 +9,8 @@ use crate::consts::{
     ACTION_SUGGESTION_MAX_CAPTURES, API_LLM_ACTION_SUGGESTION, API_LLM_GET_THUMB,
     API_LLM_UPLOAD_IMAGE, BACKEND_BASE_URL,
 };
+use tauri::Manager;
+
 use crate::services::action_lock::{ActionLockService, ActionType};
 use crate::services::api_client::ApiClient;
 use crate::services::app_state::AppStateService;
@@ -29,6 +31,7 @@ pub struct ActionSuggestionService {
     config_store: Arc<ConfigStore>,
     push_notification: Arc<PushNotificationService>,
     action_lock: Arc<ActionLockService>,
+    app_handle: tauri::AppHandle,
 }
 
 impl ActionSuggestionService {
@@ -37,6 +40,7 @@ impl ActionSuggestionService {
         config_store: Arc<ConfigStore>,
         push_notification: Arc<PushNotificationService>,
         action_lock: Arc<ActionLockService>,
+        app_handle: tauri::AppHandle,
     ) -> Self {
         Self {
             suggestions: Arc::new(Mutex::new(BTreeMap::new())),
@@ -46,6 +50,7 @@ impl ActionSuggestionService {
             config_store,
             push_notification,
             action_lock,
+            app_handle,
         }
     }
 
@@ -113,7 +118,18 @@ impl ActionSuggestionService {
 
         self.emit_suggestions(true);
 
-        let result = capture_and_grayscale().await;
+        // Find which monitor the app window is currently on so the screenshot
+        // targets the right screen, not always the first/primary one.
+        let window_center = self
+            .app_handle
+            .get_webview_window("main")
+            .and_then(|win| {
+                let pos = win.outer_position().ok()?;
+                let size = win.outer_size().ok()?;
+                Some((pos.x + size.width as i32 / 2, pos.y + size.height as i32 / 2))
+            });
+
+        let result = capture_and_grayscale(window_center).await;
         match result {
             Err(e) => {
                 log::error!("[ActionSuggestion] Screenshot capture failed: {}", e);
@@ -309,10 +325,23 @@ fn image_url(name: &str) -> String {
     format!("{}{}/{}", BACKEND_BASE_URL, API_LLM_GET_THUMB, name)
 }
 
-async fn capture_and_grayscale() -> Result<Vec<u8>, String> {
-    // Use xcap for cross-platform screenshot
+async fn capture_and_grayscale(window_center: Option<(i32, i32)>) -> Result<Vec<u8>, String> {
     let monitors = xcap::Monitor::all().map_err(|e| e.to_string())?;
-    let monitor = monitors.into_iter().next().ok_or("No monitor found")?;
+
+    // Pick the monitor whose bounds contain the window center, falling back to the first.
+    let idx = window_center
+        .and_then(|(cx, cy)| {
+            monitors.iter().position(|m| {
+                let (Ok(mx), Ok(my), Ok(mw), Ok(mh)) =
+                    (m.x(), m.y(), m.width(), m.height())
+                else {
+                    return false;
+                };
+                cx >= mx && cx < mx + mw as i32 && cy >= my && cy < my + mh as i32
+            })
+        })
+        .unwrap_or(0);
+    let monitor = monitors.into_iter().nth(idx).ok_or("No monitor found")?;
     let captured = monitor.capture_image().map_err(|e| e.to_string())?;
     let (width, height) = (captured.width(), captured.height());
     let raw = captured.into_raw();

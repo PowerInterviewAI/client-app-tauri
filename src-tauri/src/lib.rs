@@ -69,6 +69,7 @@ pub fn run() {
                 Arc::clone(&config_store),
                 Arc::clone(&push_notification),
                 Arc::clone(&action_lock),
+                handle.clone(),
             ));
             let transcript = Arc::new(TranscriptService::new(
                 Arc::clone(&app_state),
